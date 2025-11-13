@@ -1,0 +1,113 @@
+param($m) $m.Value -replace '\}', "  --send-gap: 10px;`n}" 
+body{ color:var(--c-ink); }
+.theme-dark{ color: var(--d-ink); background-color: var(--d-surface) !important; }
+.bg-gradient{ background: linear-gradient(180deg, var(--c-bg-1), var(--c-bg-2)); }
+.theme-dark.bg-gradient{ background: var(--d-surface); }
+.theme-light{ color: var(--c-ink); background: var(--c-bg-1); }
+.theme-light .bg-gradient{ background: linear-gradient(180deg, var(--c-bg-1), var(--c-bg-2)); }
+.theme-dark .app-shell{ background-color: var(--d-surface) !important; }
+.sidebar{ width:280px; background: linear-gradient(180deg, var(--c-s1), var(--c-s3)); color:#0b2a4a; }
+.app-shell .sidebar{ flex: 0 0 var(--sidebar-width, 280px); width: var(--sidebar-width, 280px); transition: flex-basis .3s ease, width .3s ease, opacity .2s ease, transform .3s ease; }
+.theme-dark .sidebar{ background: linear-gradient(180deg, #0e2846, #144a83); color: var(--d-ink); }
+.theme-light .sidebar{ background: linear-gradient(180deg, #eaf5ff, #d6ecff); color:#0b2a4a; }
+.brand{ font-weight:600; }
+.btn-icon{ background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); color: #cfe1ff; padding:4px 8px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; }
+.theme-dark .btn-icon{ background:#122346; border-color:#1e3561; color:#9bbcff; }
+.item-link{ display:block; padding:8px 10px; border-radius:10px; color:inherit; text-decoration:none; }
+.item-link:hover{ background: rgba(255,255,255,.08); }
+.topbar{ background: #fff; }
+.theme-dark .topbar{ background: var(--d-surface); }
+.theme-light .topbar{ background:#fff; }
+.theme-dark .card-soft .border-bottom{ border-color: transparent !important; }
+.card-soft{ background: #fff; border-radius: 16px; box-shadow: 0 8px 24px rgba(33,80,135,.10); }
+.theme-dark .card-soft{ background: var(--d-surface); box-shadow: 0 8px 24px rgba(3,12,30,.5); }
+.theme-light .card-soft{ background:#fff; box-shadow: 0 8px 24px rgba(0,0,0,.06); }
+.theme-dark .form-control{ background:#1a2842; color: var(--d-ink); border-color:#29436f; }
+.theme-dark .form-control:focus{ background:#1c2e4f; color: var(--d-ink); border-color:#3a5f9b; box-shadow:none; }
+.theme-dark .form-label{ color: var(--d-ink); }
+.theme-dark .form-control::placeholder{ color:#8ca0bf; }
+.theme-light .form-control{ background:#fff; color:#223; border-color:#cfd9e6; }
+.theme-light .form-control:focus{ background:#fff; border-color:#9db8df; box-shadow:none; }
+.theme-light .form-control::placeholder{ color:#7a8aa3; }
+.badge.bg-primary-soft{ background: rgba(33,133,228,.12); color: var(--c-p1); border:1px solid rgba(33,133,228,.2); }
+.btn-soft{ background: rgba(33,133,228,.12); color: var(--c-p1); border:1px solid rgba(33,133,228,.2); }
+.btn-soft:hover{ background: rgba(33,133,228,.18); color: var(--c-p2); }
+.nav-vertical li{ margin-bottom:8px; }
+.chat-area{ height: calc(100vh - 220px); overflow: auto; }
+.app-shell{ transition: all .25s ease; }
+.theme-dark .flex-grow-1,
+.theme-dark main{ background-color: var(--d-surface) !important; }
+.hero{ margin-top: 10vh; opacity:.9; }
+.is-empty .hero{ margin-top: 12vh; text-align: center; }
+.is-empty .hero .display-6{ font-size: 2.4rem; font-weight: 600; }
+/* Alinear contenido guía (hero) con caja de entrada */
+.is-empty #hero{ width: 60%; max-width: 820px; margin-left: auto; margin-right: auto; text-align: left; }
+.chat-input{ background: #f0f4f9; border-radius: 18px; }
+.theme-dark .chat-input{ background:#1f2a40; box-shadow: inset 0 0 0 1px #2c3c5f; }
+.chat-input input{ color: inherit; caret-color: var(--d-ink); }
+.chat-input input::placeholder{ color: #98a4b6; }
+.send-inline{ width: 42px; height: 42px; border-radius: 50%; display:inline-flex; align-items:center; justify-content:center; }
+.theme-light .chat-input{ background:#eef3fb; box-shadow: inset 0 0 0 1px #d8e4f7; }
+.theme-light .chat-input input{ color:#223; caret-color:#223; }
+.theme-light .chat-input input::placeholder{ color:#8796ad; }
+.is-empty .chat-header{ background: transparent; border-bottom-color: transparent !important; }
+.is-empty .card-soft{ box-shadow: none; }
+.is-empty section > .border-top{ border-top-color: transparent !important; display:flex !important; justify-content:center; }
+.is-empty .chat-input{ max-width: 820px; width: 60%; margin: 0 auto; border-radius: 18px; }
+.theme-light.is-empty .chat-input{ background:#f4f7fc; }
+/* Alinear título y caja de entrada en estado vacío */
+.is-empty .chat-header{ justify-content: flex-start; }
+.is-empty .chat-header h6{ width: auto; max-width: none; margin: 0; text-align: inherit; }
+
+/* Ajustes para acercar el botón al borde izquierdo al ocultar la barra */
+.sidebar-hidden main{ padding-left: 16px !important; padding-right: 16px !important; }
+.sidebar-hidden .chat-header{ padding-left: 8px !important; }
+/* Menos espacio arriba cuando la barra está oculta */
+.sidebar-hidden main{ padding-top: 8px !important; }
+body.sidebar-hidden.is-empty .hero{ margin-top: 8vh; }
+.msg{ display:flex; gap:8px; margin-bottom:10px; align-items:flex-start; }
+.msg .bubble{ padding:10px 12px; border-radius: 14px; max-width: 90%; }
+.msg.user .bubble{ background: var(--c-p1); color:#fff; border-bottom-right-radius: 4px; }
+.theme-dark .msg.user .bubble{ background:#1e63b5; }
+.msg.assistant .bubble{ background: #f7fbff; border:1px solid #e6eef7; color: var(--c-ink); border-bottom-left-radius: 4px; }
+.theme-dark .msg.assistant .bubble{ background:#0e2546; border:1px solid #0c2d5c; color: var(--d-ink); }
+.text-dark-50{ color: rgba(25,49,82,.7); }
+.theme-dark .text-dark-50{ color: var(--d-muted); }
+button.btn-primary{ background: var(--c-p1); border-color: var(--c-p1); }
+button.btn-primary:hover{ background: var(--c-p2); border-color: var(--c-p2); }
+
+/* Sidebar collapse (animado) */
+.sidebar-hidden .sidebar{ flex-basis: 0 !important; width:0 !important; opacity: 0; transform: translateX(-24px); pointer-events: none; }
+.theme-dark.sidebar-hidden .sidebar{ background: var(--d-surface) !important; }
+.theme-light.sidebar-hidden .sidebar{ background: var(--c-bg-1) !important; }
+.sidebar-hidden .chat-header{ position: relative; padding-left: 16px !important; }
+.sidebar-hidden #expandBtn{ display:inline-flex !important; position: absolute; left: 0; top: 50%; transform: translate(-36px, -50%); z-index: 1060; width: 28px; height: 28px; margin: 0; }
+.theme-dark.sidebar-hidden #expandBtn{ background: rgba(18,35,70,.65); border:1px solid #2a4576; color:#9bc3ff; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+.theme-light.sidebar-hidden #expandBtn{ background:#e9f1ff; border:1px solid #c8d8f2; color:#4a78c2; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+.theme-dark.sidebar-hidden .card-soft{ width: 100% !important; margin: 0 !important; background: var(--d-surface); box-shadow: none; border-radius: 0; }
+.theme-light.sidebar-hidden .card-soft{ width: 100% !important; margin: 0 !important; background: #fff; box-shadow: none; border-radius: 0; }
+.sidebar-hidden .chat-area{ height: calc(100vh - 180px); }
+main{ transition: padding .3s ease; }
+.chat-header{ transition: padding .3s ease, background-color .2s ease, border-color .2s ease; }
+.sidebar, main, .card-soft{ transition: all .3s ease; }
+@media (prefers-reduced-motion: reduce){
+  .app-shell .sidebar, main, .chat-header, .card-soft{ transition: none !important; }
+}
+
+/* Ajustes de ancho y proporción del campo de entrada */
+param($m) $m.Value -replace '\}', "  --send-gap: 10px;`n}" 
+
+/* Alinear el texto guía con el ancho del campo */
+.is-empty #hero{ width: min(var(--chat-input-width), var(--chat-input-max)); }
+
+/* Forzar ancho del campo y centrarlo */
+.chat-input{ flex: 0 1 auto; width: min(var(--chat-input-width), var(--chat-input-max)); margin: 0 auto; padding-right: var(--send-gap); gap: 8px; }
+.is-empty .chat-input{ width: min(var(--chat-input-width), var(--chat-input-max)); }
+
+/* Botón de enviar proporcional al ancho */
+.send-inline{ width: var(--send-size); height: var(--send-size); }
+
+/* Ajustes finos: evitar que el bot�n toque el radio del campo */
+.chat-input{ padding-right: 10px !important; }
+.send-inline{ width: 38px !important; height: 38px !important; margin-right: 2px; }
+

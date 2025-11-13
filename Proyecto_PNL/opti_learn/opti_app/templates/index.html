@@ -1,0 +1,89 @@
+﻿<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OptiLearn Web</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/opti_app/css/app_v2.css" rel="stylesheet">
+    <!-- Markdown + Sanitizer -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <!-- MathJax (LaTeX) -->
+    <script>
+      window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js"></script>
+    <script>
+      window.OPTI = {
+        CHAT_SESSION_ID: "{{ chat_session_id }}",
+        CSRF: "{{ csrf_token }}"
+      };
+    </script>
+  </head>
+  <body class="bg-gradient theme-dark">
+    <div class="d-flex min-vh-100 app-shell">
+      <!-- Main area -->
+      <div class="flex-grow-1 d-flex flex-column">
+        <main class="px-4 pt-2 d-flex gap-3 flex-wrap position-relative">
+          <!-- Chat only -->
+          <section class="card-soft p-0 flex-grow-1 w-100 chat-panel">
+            <div class="px-3 py-2 d-flex align-items-center gap-2 chat-header">
+              <button class="menu-btn" id="menuBtn" title="Menú">
+                <span class="inner"></span>
+              </button>
+              <h6 class="m-0">Asistente Educativo</h6>
+              <div class="ms-auto"></div>
+            </div>
+            <div id="chat" class="chat-area p-3">
+              <div id="hero" class="hero text-center">
+                <div class="display-6 mb-3"><i class="bi bi-hexagon text-primary"></i> ¿En qué puedo ayudarte?</div>
+                <div class="hint text-dark-50">Describe un problema o pega un JSON con <code>objective_expr</code>.</div>
+              </div>
+            </div>
+            <div class="px-3 pt-1 pb-3 d-flex gap-2 align-items-center chat-footer">
+              <div class="chat-input flex-grow-1 d-flex align-items-center px-3">
+                <input id="chatInput" class="form-control border-0 bg-transparent flex-grow-1" placeholder="Mensaje al asistente"/>
+                <button id="sendBtn" class="btn btn-primary rounded-circle send-inline" title="Enviar"><i class="bi bi-arrow-up"></i></button>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <!-- Sidebar flotante (overlay) -->
+    <div id="sideBackdrop" class="overlay-backdrop" role="button" aria-label="Cerrar menú" tabindex="-1"></div>
+    <aside id="sidePanel" class="overlay-sidebar" aria-label="Menú lateral">
+      <div class="overlay-header p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <div class="brand"><i class="bi bi-hexagon me-2"></i>OptiLearn</div>
+          <small class="text-dark-50">Optimización No Lineal</small>
+        </div>
+        <button class="btn btn-icon" id="menuClose" title="Cerrar"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <hr class="overlay-sep my-0">
+      <div class="overlay-body p-3">
+        <div class="mb-2 small text-dark-50">Métodos disponibles</div>
+        <ul class="list-unstyled small nav-vertical">
+          <li><a class="item-link" href="/methods/qp"><i class="bi bi-graph-up-arrow me-2"></i>Programación cuadrática</a></li>
+          <li><a class="item-link" href="/methods/lagrange"><i class="bi bi-flag me-2"></i>Lagrange</a></li>
+          <li><a class="item-link" href="/methods/kkt"><i class="bi bi-shield-check me-2"></i>Condiciones KKT</a></li>
+          <li><a class="item-link" href="/methods/gradient"><i class="bi bi-sliders me-2"></i>Gradiente</a></li>
+          <li><a class="item-link" href="/methods/differential"><i class="bi bi-calculator me-2"></i>Cálculo diferencial</a></li>
+        </ul>
+      </div>
+      <div class="overlay-footer mt-auto p-3 small d-flex align-items-center gap-2">
+        <div class="form-check form-switch d-flex align-items-center gap-2 m-0">
+          <i class="bi bi-moon"></i>
+          <input class="form-check-input" type="checkbox" id="themeToggle">
+          <label class="form-check-label mb-0" for="themeToggle">Modo oscuro</label>
+        </div>
+      </div>
+    </aside>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/opti_app/js/app.js"></script>
+  </body>
+  </html>

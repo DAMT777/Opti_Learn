@@ -13,14 +13,99 @@ let collapseBtn = null;
 let expandBtn = null;
 let heroRef = null; const getHero = () => (heroRef || (heroRef = document.getElementById('hero')));
 
+// Markdown rendering helpers (Marked + DOMPurify via CDN)
+function renderMarkdownToHTML(text){
+  try{
+    if(window.marked){
+      const raw = window.marked.parse(String(text||''), { breaks: true });
+      if(window.DOMPurify){
+        return window.DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+      }
+      return raw;
+    }
+  }catch{}
+  // Fallback: escape basic
+  return String(text||'').replace(/</g,'&lt;');
+}
+
+function attachPlotForPayload(payload, bubble){
+  if(!payload || !payload.plot || !bubble) return;
+  const iterations = Array.isArray(payload.plot.iterations) ? payload.plot.iterations : [];
+  if(!iterations.length) return;
+  const parent = bubble.parentElement;
+  if(!parent) return;
+  const chart = document.createElement('div');
+  chart.className = 'assistant-plot';
+  chart.dataset.plotMethod = payload.plot.method || 'graph';
+  parent.appendChild(chart);
+  if(window.Plotly){
+    const varNames = Array.isArray(payload.plot.variables) ? payload.plot.variables : [];
+    const data = [];
+    if(varNames.length >= 2){
+      const xs = iterations.map(it => Array.isArray(it.x_k) ? it.x_k[0] : null);
+      const ys = iterations.map(it => Array.isArray(it.x_k) ? it.x_k[1] : null);
+      if(xs.some(v=>v !== null) && ys.some(v=>v !== null)){
+        data.push({
+          x: xs,
+          y: ys,
+          mode: 'lines+markers',
+          name: 'Trayectoria',
+          marker: { color: '#6bc8ff' },
+          line: { color: '#6bc8ff', width: 2 },
+        });
+      }
+    }
+    const fkValues = iterations.map(it => (typeof it.f_k === 'number' ? it.f_k : null));
+    if(fkValues.some(v=>v !== null)){
+      data.push({
+        y: fkValues,
+        mode: 'lines+markers',
+        name: 'Objetivo f(x)',
+        marker: { color: '#ffe066' },
+        line: { color: '#ffe066', dash: 'dash' },
+      });
+    }
+    if(!data.length){
+      chart.textContent = 'Sin datos numéricos para graficar.';
+      return;
+    }
+    const layout = {
+      title: payload.plot.title || `Método ${payload.plot.method || 'desconocido'}`,
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      margin: { t: 32, b: 32, l: 48, r: 16 },
+      font: { color: 'rgba(255,255,255,0.92)' },
+      legend: { orientation: 'h', y: -0.2 },
+    };
+    Plotly.newPlot(chart, data, layout, { responsive: true, displayModeBar: false });
+  } else {
+    chart.textContent = 'Gráfica disponible (Plotly no cargado).';
+  }
+}
+
 function addMsg(role, text){
   const wrap = document.createElement('div');
   wrap.className = `msg ${role}`;
-  const safe = String(text).replace(/</g,'&lt;');
-  wrap.innerHTML = `<div class="bubble">${safe}</div>`;
+  let inner = '';
+  if(role === 'assistant'){
+    const html = renderMarkdownToHTML(text);
+    inner = `<div class="bubble"><div class="md">${html}</div></div>`;
+  } else {
+    const safe = String(text).replace(/</g,'&lt;');
+    inner = `<div class="bubble">${safe}</div>`;
+  }
+  wrap.innerHTML = inner;
   (getChat()||document.body).appendChild(wrap);
   const _c=getChat(); if(_c){ _c.scrollTop = _c.scrollHeight; }
   { const h=getHero(); if(h){ h.style.display='none'; } }
+  // Render LaTeX si agregamos directamente un mensaje del asistente
+  if(role === 'assistant'){
+    try{
+      if(window.MathJax && window.MathJax.typesetPromise){
+        window.requestAnimationFrame(()=> window.MathJax.typesetPromise([wrap]));
+      }
+    }catch{}
+  }
   updateEmptyState();
 }
 
@@ -48,7 +133,7 @@ function showTyping(){
 function clearTyping(){ if(typingBubble && typingBubble.isConnected){ typingBubble.parentElement?.remove(); } typingBubble=null; }
 
 // Escribe texto en la burbuja con efecto "typewriter"
-function streamIntoBubble(text){
+function streamIntoBubble(text, onComplete){
   const bubble = typingBubble || showTyping();
   // Usar textContent para evitar HTML injection y preservar con CSS white-space
   bubble.textContent = '';
@@ -60,10 +145,19 @@ function streamIntoBubble(text){
   const timer = setInterval(()=>{
     i += chunk;
     if(i >= total.length){
-      bubble.textContent = total;
+      // Al terminar el tipeo, renderizamos como Markdown seguro
+      const html = renderMarkdownToHTML(total);
+      bubble.innerHTML = `<div class="md">${html}</div>`;
+      // Render LaTeX si MathJax está disponible
+      try{
+        if(window.MathJax && window.MathJax.typesetPromise){
+          window.MathJax.typesetPromise([bubble]);
+        }
+      }catch{}
       clearInterval(timer);
       typingBubble = null; // finalizado
       const _c=getChat(); if(_c){ _c.scrollTop = _c.scrollHeight; }
+      if(typeof onComplete === 'function'){ window.requestAnimationFrame(()=> onComplete(bubble)); }
       return;
     }
     bubble.textContent = total.slice(0, i);
@@ -86,7 +180,7 @@ function connectWS(){
     try {
       const msg = JSON.parse(e.data);
       if(msg.type==='assistant_message'){
-        streamIntoBubble(msg.text||'');
+        streamIntoBubble(msg.text||'', (bubble)=> attachPlotForPayload(msg.payload, bubble));
       }
     } catch{}
   };
@@ -139,6 +233,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(menuBtn){ menuBtn.addEventListener('click', openMenu); }
   if(menuClose){ menuClose.addEventListener('click', closeMenu); }
   if(backdrop){ backdrop.addEventListener('click', closeMenu); }
+  // Cerrar al hacer click fuera del panel aunque el backdrop no capture eventos
+  document.addEventListener('click', (ev)=>{
+    const t = ev.target;
+    if(!document.body.classList.contains('menu-open')) return;
+    if(!t) return;
+    const insidePanel = (t.closest && t.closest('#sidePanel'));
+    const onMenuBtn = (t.id === 'menuBtn' || (t.closest && t.closest('#menuBtn')));
+    if(!insidePanel && !onMenuBtn){ closeMenu(); }
+  }, true);
   document.addEventListener('keydown', (ev)=>{ if(ev.key==='Escape'){ closeMenu(); }});
   const doSend = ()=>{
     if(!input) return;
@@ -186,7 +289,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 function renderHistory(items){
   if(!historyBox) return;
-  historyBox.innerHTML = items.map(i=>`<div class="small">#${i.id.slice(0,8)} • f*=${i.f}</div>`).join('');
+  historyBox.innerHTML = items.map(i=>`<div class="small">#${i.id.slice(0,8)} · f*=${i.f}</div>`).join('');
 }
 
 function updateEmptyState(){
@@ -210,4 +313,3 @@ function setConnStatus(state){
     label.textContent = state === 'online' ? 'Conectado' : state === 'connecting' ? 'Conectando...' : 'Desconectado';
   }
 }
-

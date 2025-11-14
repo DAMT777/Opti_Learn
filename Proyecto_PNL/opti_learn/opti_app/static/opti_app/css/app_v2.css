@@ -383,6 +383,33 @@ body.menu-open .app-shell{ margin-left: 0 !important; width: 100% !important; }
 body.menu-open #chat{ transform: none; }
 
 
+/* Gráficas contextuales dentro del chat */
+.assistant-plot{
+  width: calc(100% + 1rem);
+  max-width: 520px;
+  height: 320px;
+  margin: 0.75rem -0.5rem 0;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.9);
+  padding: 0.6rem;
+  box-shadow: 0 10px 28px rgba(15, 49, 83, 0.1);
+  overflow: hidden;
+}
+.assistant-plot canvas,
+.assistant-plot svg{
+  border-radius: 12px;
+}
+body.theme-dark .assistant-plot{
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(8,13,45,0.85);
+}
+body.theme-light .assistant-plot{
+  border-color: rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.95);
+}
+
+
 /* Responsive enhancements */
 .chat-footer{ padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0px); }
 @media (max-width: 1200px){ :root{ --chat-input-width: 760px; } }

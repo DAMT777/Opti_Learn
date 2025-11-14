@@ -34,7 +34,7 @@ Autoría: Equipo OptiLearn (base para trabajo colaborativo)
 - Análisis automático: detección de variables, tipo de restricción, convexidad local (si aplica), naturaleza cuadrática.
 - Sugerencia de método y parámetros iniciales (puntos de arranque, tolerancias, límites).
 - Ejecución controlada por iteraciones con métricas (norma del gradiente, error, paso, criterio de parada).
-- Chat integrado: IA explica pasos, justifica decisiones y resume resultados.
+- Chat integrado: IA explica pasos, justifica decisiones, resume resultados y comparte las iteraciones para que el frontend pueda mostrar trayectorias con Plotly.
 - Persistencia de problemas, soluciones, iteraciones y mensajes.
 - Exportación a PDF con desarrollo y visualizaciones.
 
@@ -117,7 +117,7 @@ opti_learn/
 - Sesión de chat (`ChatSession`):
   - `id`, `user` (FK), `problem` (FK opcional), `created_at`, `active`
 - Mensaje de chat (`ChatMessage`):
-  - `id`, `session` (FK), `role` (user|assistant|system), `content` (text), `payload` (json), `created_at`
+  - `id`, `session` (FK), `role` (user|assistant|system), `content` (text), `payload` (json con análisis/iteraciones para gráficas), `created_at`
 
 5.2 Índices y consideraciones
 - Índices por `owner`, `created_at` en `Problem`.
@@ -140,7 +140,7 @@ opti_learn/
 - Ruta: `/ws/chat/:session_id/`
 - Mensajes (JSON):
   - Cliente→Servidor: `{type: "user_message", text, problem_id?}`
-  - Servidor→Cliente (IA): `{type: "assistant_message", text, references?, charts?}`
+- Servidor→Cliente (IA): `{type: "assistant_message", text, payload?}` donde `payload.plot` incluye iteraciones, `x_k` y `f_k` para que la UI monte la gráfica correspondiente.
   - Progreso solver: `{type: "iteration", k, x_k, f_k, grad_norm, step}`
   - Estado: `{type: "status", stage: analyzing|solving|done|error, detail}`
 
@@ -330,4 +330,3 @@ Anexo B — Convenciones de Nombres
 - Campos JSON con claves minúsculas y snake_case.
 
 Fin del documento.
-

@@ -28,6 +28,79 @@ function renderMarkdownToHTML(text){
   return String(text||'').replace(/</g,'&lt;');
 }
 
+function attachPlotForPayload(payload, bubble){
+  if(!payload || !payload.plot || !bubble) return;
+  const iterations = Array.isArray(payload.plot.iterations) ? payload.plot.iterations : [];
+  if(!iterations.length) return;
+  const bubbleEl = bubble.closest('.bubble') || bubble;
+  if(!bubbleEl) return;
+  const existingChart = bubbleEl.querySelector('.assistant-plot');
+  if(existingChart){
+    existingChart.remove();
+  }
+  const chart = document.createElement('div');
+  chart.className = 'assistant-plot';
+  chart.dataset.plotMethod = payload.plot.method || 'graph';
+  const md = bubbleEl.querySelector('.md');
+  if(md){
+    md.insertAdjacentElement('afterend', chart);
+  } else {
+    bubbleEl.appendChild(chart);
+  }
+  if(window.Plotly){
+    const varNames = Array.isArray(payload.plot.variables) ? payload.plot.variables : [];
+    const data = [];
+    if(varNames.length >= 2){
+      const xs = iterations.map(it => Array.isArray(it.x_k) ? it.x_k[0] : null);
+      const ys = iterations.map(it => Array.isArray(it.x_k) ? it.x_k[1] : null);
+      if(xs.some(v=>v !== null) && ys.some(v=>v !== null)){
+        data.push({
+          x: xs,
+          y: ys,
+          mode: 'lines+markers',
+          name: 'Trayectoria',
+          marker: { color: '#6bc8ff' },
+          line: { color: '#6bc8ff', width: 2 },
+        });
+      }
+    }
+    const fkValues = iterations.map(it => (typeof it.f_k === 'number' ? it.f_k : null));
+    if(fkValues.some(v=>v !== null)){
+      data.push({
+        y: fkValues,
+        mode: 'lines+markers',
+        name: 'Objetivo f(x)',
+        marker: { color: '#ffe066' },
+        line: { color: '#ffe066', dash: 'dash' },
+      });
+    }
+    if(!data.length){
+      chart.textContent = 'Sin datos numéricos para graficar.';
+      return;
+    }
+    const layout = {
+      title: payload.plot.title || `Método ${payload.plot.method || 'desconocido'}`,
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      margin: { t: 28, b: 28, l: 40, r: 16 },
+      font: { color: 'rgba(30,40,70,0.85)' },
+      legend: { orientation: 'h', y: -0.25 },
+      height: 280,
+      width: 520,
+      dragmode: 'pan',
+    };
+    const config = {
+      responsive: true,
+      displayModeBar: true,
+      scrollZoom: true,
+      modeBarButtonsToRemove: ['sendDataToCloud', 'hoverCompareCartesian'],
+    };
+    Plotly.newPlot(chart, data, layout, config);
+  } else {
+    chart.textContent = 'Gráfica disponible (Plotly no cargado).';
+  }
+}
+
 function addMsg(role, text){
   const wrap = document.createElement('div');
   wrap.className = `msg ${role}`;
@@ -78,7 +151,7 @@ function showTyping(){
 function clearTyping(){ if(typingBubble && typingBubble.isConnected){ typingBubble.parentElement?.remove(); } typingBubble=null; }
 
 // Escribe texto en la burbuja con efecto "typewriter"
-function streamIntoBubble(text){
+function streamIntoBubble(text, onComplete){
   const bubble = typingBubble || showTyping();
   // Usar textContent para evitar HTML injection y preservar con CSS white-space
   bubble.textContent = '';
@@ -102,6 +175,7 @@ function streamIntoBubble(text){
       clearInterval(timer);
       typingBubble = null; // finalizado
       const _c=getChat(); if(_c){ _c.scrollTop = _c.scrollHeight; }
+      if(typeof onComplete === 'function'){ window.requestAnimationFrame(()=> onComplete(bubble)); }
       return;
     }
     bubble.textContent = total.slice(0, i);
@@ -124,7 +198,7 @@ function connectWS(){
     try {
       const msg = JSON.parse(e.data);
       if(msg.type==='assistant_message'){
-        streamIntoBubble(msg.text||'');
+        streamIntoBubble(msg.text||'', (bubble)=> attachPlotForPayload(msg.payload, bubble));
       }
     } catch{}
   };

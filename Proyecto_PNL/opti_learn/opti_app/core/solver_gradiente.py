@@ -6,6 +6,36 @@ import numpy as np
 from .analyzer import build_sympy_functions, construir_funciones_numericas_sympy
 
 
+def _build_mesh(f_num, puntos: np.ndarray, resolution: int = 60):
+    if puntos.size == 0:
+        return None
+    xs = puntos[:, 0]
+    ys = puntos[:, 1]
+    x_min, x_max = float(xs.min()), float(xs.max())
+    y_min, y_max = float(ys.min()), float(ys.max())
+    range_x = max(x_max - x_min, 1e-1)
+    range_y = max(y_max - y_min, 1e-1)
+    margin_x = range_x * 0.6
+    margin_y = range_y * 0.6
+    x_lin = np.linspace(x_min - margin_x, x_max + margin_x, resolution)
+    y_lin = np.linspace(y_min - margin_y, y_max + margin_y, resolution)
+    xv, yv = np.meshgrid(x_lin, y_lin)
+    coords = np.stack([xv.ravel(), yv.ravel()], axis=-1)
+    z_vals = []
+    for coord in coords:
+        try:
+            z = float(np.array(f_num(coord), dtype=float))
+        except Exception:
+            z = float('nan')
+        z_vals.append(z)
+    zv = np.array(z_vals, dtype=float).reshape(xv.shape)
+    return {
+        'x': x_lin.tolist(),
+        'y': y_lin.tolist(),
+        'z': zv.tolist(),
+    }
+
+
 def resolver_descenso_gradiente(
     expresion_objetivo: str,
     nombres_variables: List[str],
@@ -34,7 +64,6 @@ def resolver_descenso_gradiente(
             iteraciones.append({'k': k, 'x_k': x_vec.tolist(), 'f_k': f_k, 'grad_norm': norma_grad, 'step': 0.0, 'notes': 'Convergencia por gradiente'})
             break
 
-        # Backtracking Armijo
         alpha = 1.0
         while True:
             x_nuevo = x_vec - alpha * grad_k
@@ -53,12 +82,45 @@ def resolver_descenso_gradiente(
             iteraciones.append({'k': k+1, 'x_k': x_vec.tolist(), 'f_k': f_k, 'grad_norm': float(np.linalg.norm(valor_gradiente(x_vec))), 'step': 0.0, 'notes': 'Convergencia por cambio relativo'})
             break
 
+    trajectory = []
+    fx_values = []
+    points = []
+    for it in iteraciones:
+        xk = it.get('x_k') or []
+        if len(xk) == n_dim:
+            points.append(np.array(xk, dtype=float))
+            trajectory.append({'x': float(xk[0]), 'y': float(xk[1]) if n_dim > 1 else float(xk[0]), 'f': float(it.get('f_k', 0.0))})
+            fx_values.append(float(it.get('f_k', 0.0)))
+
+    plot_data: Dict[str, Any] = {}
+    if n_dim == 2 and len(points) >= 2:
+        point_array = np.stack(points)
+        mesh = _build_mesh(f_num, point_array)
+        segments = []
+        for i in range(len(point_array) - 1):
+            segments.append({
+                'x': [float(point_array[i, 0]), float(point_array[i + 1, 0])],
+                'y': [float(point_array[i, 1]), float(point_array[i + 1, 1])],
+            })
+        fx_curve = {'iter': list(range(len(fx_values))), 'f': fx_values}
+        plot_data = {
+            'mesh': mesh,
+            'trajectory': {
+                'x': [float(p[0]) for p in point_array],
+                'y': [float(p[1]) for p in point_array],
+                'f': fx_values,
+            },
+            'segments': segments,
+            'fx_curve': fx_curve,
+        }
+
     resultado = {
         'method': 'gradient',
         'status': 'ok',
         'x_star': x_vec.tolist(),
         'f_star': f_k,
         'iterations': iteraciones,
+        'plot_data': plot_data,
     }
     return resultado
 

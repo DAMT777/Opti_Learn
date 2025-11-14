@@ -86,6 +86,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                     f" Gradiente descendente alcanzó f*≈{f_star_display} "
                                     f"en {iter_count} iteraciones."
                                 )
+                                plot_info = resultado.get('plot_data') or {}
                                 reply_payload['plot'] = {
                                     'type': 'trajectory',
                                     'method': 'gradient',
@@ -93,6 +94,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                     'iterations': resultado.get('iterations', []),
                                     'x_star': resultado.get('x_star'),
                                     'f_star': resultado.get('f_star'),
+                                    'plot_data': plot_info,
                                 }
                             except Exception as solver_error:
                                 assistant_text += f" El solver local falló: {solver_error}"

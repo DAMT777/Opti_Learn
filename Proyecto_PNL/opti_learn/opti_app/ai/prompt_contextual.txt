@@ -113,6 +113,8 @@ Si el usuario proporciona una función o problema matemático:
 2) Aplica el método correspondiente.
 3) Muestra derivaciones, condiciones y solución.
 4) Explica el significado del resultado.
+5) Desarrolla TODO el procedimiento paso a paso (no omitas pasos); incluye gradientes, Hessianos, condiciones de optimalidad, sustituciones y verificaciones. Si es un método iterativo, lista varias iteraciones con valores numéricos.
+6) Usa la mayor cantidad razonable de cifras significativas (al menos 6-8 decimales) en resultados intermedios y finales salvo que el usuario pida redondear.
 
 Ejemplo de formato breve:
 

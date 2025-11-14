@@ -30,14 +30,19 @@ function renderMarkdownToHTML(text){
 
 function attachPlotForPayload(payload, bubble){
   if(!payload || !payload.plot || !bubble) return;
-  const iterations = Array.isArray(payload.plot.iterations) ? payload.plot.iterations : [];
-  if(!iterations.length) return;
+  const plotData = payload.plot.plot_data;
   const bubbleEl = bubble.closest('.bubble') || bubble;
   if(!bubbleEl) return;
-  const existingChart = bubbleEl.querySelector('.assistant-plot');
-  if(existingChart){
-    existingChart.remove();
+  bubbleEl.querySelectorAll('.assistant-plot').forEach(node => node.remove());
+  if(plotData && plotData.mesh && window.Plotly){
+    const varCount = Array.isArray(payload.plot.variables) ? payload.plot.variables.length : 0;
+    const surfaceOnly = (varCount === 2);
+    renderGradientPlots(plotData, bubbleEl, { surfaceOnly });
+    return;
   }
+  // Fallback legacy single plot
+  const iterations = Array.isArray(payload.plot.iterations) ? payload.plot.iterations : [];
+  if(!iterations.length) return;
   const chart = document.createElement('div');
   chart.className = 'assistant-plot';
   chart.dataset.plotMethod = payload.plot.method || 'graph';
@@ -99,6 +104,173 @@ function attachPlotForPayload(payload, bubble){
   } else {
     chart.textContent = 'Gráfica disponible (Plotly no cargado).';
   }
+}
+
+function renderGradientPlots(plotData, bubbleEl, options = { surfaceOnly: false }){
+  const md = bubbleEl.querySelector('.md');
+  const insertAfter = (el, node) => {
+    if(el){
+      el.insertAdjacentElement('afterend', node);
+    } else {
+      bubbleEl.appendChild(node);
+    }
+  };
+  if(options.surfaceOnly){
+    const surfaceChart = appendPlotBubble(bubbleEl, md, 'surface');
+    renderSurface(surfaceChart, plotData);
+    return;
+  }
+  const contourChart = appendPlotBubble(bubbleEl, md, 'contour');
+  renderContour(contourChart, plotData);
+  const surfaceChart = appendPlotBubble(bubbleEl, contourChart, 'surface');
+  renderSurface(surfaceChart, plotData);
+  const fxChart = appendPlotBubble(bubbleEl, surfaceChart, 'fx');
+  renderFxCurve(fxChart, plotData);
+}
+
+function appendPlotBubble(parent, refNode, modifier){
+  const wrapper = document.createElement('div');
+  wrapper.className = `assistant-plot assistant-plot--${modifier}`;
+  if(refNode && refNode.parentElement){
+    refNode.insertAdjacentElement('afterend', wrapper);
+  } else {
+    parent.appendChild(wrapper);
+  }
+  return wrapper;
+}
+
+function renderContour(chart, plotData){
+  const mesh = plotData.mesh;
+  if(!mesh || !mesh.x.length || !mesh.y.length) return;
+  const trajectory = plotData.trajectory || { x: [], y: [] };
+  const contourTrace = {
+    type: 'contour',
+    x: mesh.x,
+    y: mesh.y,
+    z: mesh.z,
+    colorscale: 'Viridis',
+    contours: { coloring: 'lines', showlabels: false },
+    showscale: false,
+  };
+  const trailTrace = {
+    x: trajectory.x,
+    y: trajectory.y,
+    mode: 'lines+markers',
+    name: 'Trayectoria',
+    marker: { size: 6, color: '#1f77b4' },
+    line: { color: '#1f77b4', width: 3, shape: 'spline' },
+  };
+  const config = { responsive: true, displayModeBar: false };
+  const layout = {
+    title: 'Curvas de nivel',
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    margin: { t: 36, b: 28, l: 40, r: 16 },
+    height: 260,
+    legend: { orientation: 'h', y: -0.2 },
+    xaxis: { showgrid: true, zeroline: true },
+    yaxis: { showgrid: true, zeroline: true },
+  };
+  Plotly.newPlot(chart, [contourTrace, trailTrace], layout, config);
+  insertPlotLegend(chart, [
+    { label: 'Curtas de nivel f(x,y)', color: '#6c757d' },
+    { label: 'Trayectoria del gradiente', color: '#1f77b4' },
+  ]);
+}
+
+function renderSurface(chart, plotData){
+  const mesh = plotData.mesh;
+  if(!mesh || ! mesh.x.length ) return;
+  const trajectory = plotData.trajectory || { x: [], y: [], f: [] };
+  const surfaceTrace = {
+    type: 'surface',
+    x: mesh.x,
+    y: mesh.y,
+    z: mesh.z,
+    colorscale: 'Blues',
+    showscale: false,
+    opacity: 0.9,
+  };
+  const pathTrace = {
+    type: 'scatter3d',
+    mode: 'lines+markers',
+    x: trajectory.x,
+    y: trajectory.y,
+    z: trajectory.f,
+    marker: { size: 4, color: '#ffe066' },
+    line: { width: 4, color: '#1f77b4' },
+    name: 'Camino',
+  };
+  const layout = {
+    title: 'Superficie',
+    margin: { t: 36, b: 20, l: 20, r: 20 },
+    scene: {
+      aspectmode: 'auto',
+      xaxis: { title: 'x' },
+      yaxis: { title: 'y' },
+      zaxis: { title: 'f(x)' },
+    },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+  };
+  const config = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['sendDataToCloud'],
+  };
+  Plotly.newPlot(chart, [surfaceTrace, pathTrace], layout, config);
+  insertPlotLegend(chart, [
+    { label: 'Superficie f(x,y)', color: '#4267f5' },
+    { label: 'Camino iterativo', color: '#ffe066' },
+  ]);
+}
+
+function renderFxCurve(chart, plotData){
+  const fx = plotData.fx_curve;
+  if(!fx || !Array.isArray(fx.f)) return;
+  const valid = fx.f.map((value, idx) => ({ idx, value })).filter(item => typeof item.value === 'number');
+  if(!valid.length) return;
+  const trace = {
+    x: valid.map(item => item.idx),
+    y: valid.map(item => item.value),
+    mode: 'lines+markers',
+    line: { shape: 'spline', color: '#ff7f0e', width: 3 },
+    marker: { size: 5 },
+    name: 'f(x_k)',
+  };
+  const layout = {
+    title: 'Valor objetivo',
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    margin: { t: 28, b: 32, l: 44, r: 16 },
+    xaxis: { title: 'Iteración' },
+    yaxis: { title: 'f(x_k)' },
+    height: 220,
+  };
+  const config = {
+    responsive: true,
+    displayModeBar: false,
+  };
+  Plotly.newPlot(chart, [trace], layout, config);
+  insertPlotLegend(chart, [
+    { label: 'Evolución f(x_k)', color: '#ff7f0e' },
+  ]);
+}
+
+function insertPlotLegend(chart, items){
+  if(!Array.isArray(items) || !items.length) return;
+  const legend = document.createElement('div');
+  legend.className = 'assistant-plot__legend';
+  items.forEach(({ label, color }) => {
+    const node = document.createElement('span');
+    node.className = 'assistant-plot__legend-item';
+    const swatch = document.createElement('span');
+    swatch.className = 'assistant-plot__legend-swatch';
+    swatch.style.background = color || '#fff';
+    node.appendChild(swatch);
+    node.appendChild(document.createTextNode(label));
+    legend.appendChild(node);
+  });
+  chart.insertAdjacentElement('afterbegin', legend);
 }
 
 function addMsg(role, text){

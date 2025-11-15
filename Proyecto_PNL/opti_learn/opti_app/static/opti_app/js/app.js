@@ -118,6 +118,7 @@ function renderGradientPlots(plotData, bubbleEl, options = { surfaceOnly: false 
   if(options.surfaceOnly){
     const surfaceChart = appendPlotBubble(bubbleEl, md, 'surface');
     renderSurface(surfaceChart, plotData);
+    appendPlotInterpretation(surfaceChart, plotData);
     return;
   }
   const contourChart = appendPlotBubble(bubbleEl, md, 'contour');
@@ -126,6 +127,7 @@ function renderGradientPlots(plotData, bubbleEl, options = { surfaceOnly: false 
   renderSurface(surfaceChart, plotData);
   const fxChart = appendPlotBubble(bubbleEl, surfaceChart, 'fx');
   renderFxCurve(fxChart, plotData);
+  appendPlotInterpretation(fxChart, plotData);
 }
 
 function appendPlotBubble(parent, refNode, modifier){
@@ -206,9 +208,10 @@ function renderSurface(chart, plotData){
     margin: { t: 36, b: 20, l: 20, r: 20 },
     scene: {
       aspectmode: 'auto',
-      xaxis: { title: 'x' },
-      yaxis: { title: 'y' },
-      zaxis: { title: 'f(x)' },
+      xaxis: { title: 'x', gridcolor: 'rgba(255,255,255,0.2)', zerolinecolor: 'rgba(255,255,255,0.25)' },
+      yaxis: { title: 'y', gridcolor: 'rgba(255,255,255,0.2)', zerolinecolor: 'rgba(255,255,255,0.25)' },
+      zaxis: { title: 'f(x)', gridcolor: 'rgba(255,255,255,0.2)', zerolinecolor: 'rgba(255,255,255,0.25)' },
+      backgroundcolor: 'rgba(12,18,40,0.85)',
     },
     paper_bgcolor: 'rgba(0,0,0,0)',
   };
@@ -254,6 +257,23 @@ function renderFxCurve(chart, plotData){
   insertPlotLegend(chart, [
     { label: 'Evolución f(x_k)', color: '#ff7f0e' },
   ]);
+}
+
+function appendPlotInterpretation(anchorChart, plotData){
+  if(!anchorChart) return;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'assistant-plot-note';
+  const iterCount = plotData.trajectory && Array.isArray(plotData.trajectory.x) ? plotData.trajectory.x.length : 0;
+  const endX = (plotData.trajectory?.x ?? []).slice(-1)[0];
+  const endY = (plotData.trajectory?.y ?? []).slice(-1)[0];
+  const endF = (plotData.trajectory?.f ?? []).slice(-1)[0];
+  const coords = [
+    typeof endX === 'number' ? endX.toFixed(6) : '-',
+    typeof endY === 'number' ? endY.toFixed(6) : '-',
+  ];
+  const fLabel = typeof endF === 'number' ? endF.toFixed(6) : '-';
+  wrapper.innerHTML = `<strong>Interpretación de la gráfica:</strong> La línea amarilla registra el camino del gradiente descendente; tras ${iterCount} iteraciones converge al punto (${coords.join(', ')}) con f(x)≈${fLabel}. Observa cómo el modelo desciende por la superficie hasta el valle donde se hace mínima la función.`;
+  anchorChart.insertAdjacentElement('afterend', wrapper);
 }
 
 function insertPlotLegend(chart, items){

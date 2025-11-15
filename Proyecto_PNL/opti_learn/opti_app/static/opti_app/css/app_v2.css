@@ -286,6 +286,17 @@ body.theme-light .msg.assistant .bubble .md blockquote{ background: rgba(58,119,
 .msg.assistant .bubble .md td{ border:1px solid rgba(0,0,0,.15); padding: 6px 8px; }
 body.theme-light .msg.assistant .bubble .md th,
 body.theme-light .msg.assistant .bubble .md td{ border-color: rgba(0,0,0,.1); }
+
+.iteration-table{ width:100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .95em; }
+.iteration-table th,
+.iteration-table td{ border:1px solid rgba(0,0,0,.15); padding:6px 8px; text-align:center; }
+.iteration-table td:nth-child(2){ text-align:left; font-family: "JetBrains Mono","Fira Mono",monospace; }
+body.theme-light .iteration-table th,
+body.theme-light .iteration-table td{ border-color: rgba(0,0,0,.1); }
+body.theme-dark .iteration-table th,
+body.theme-dark .iteration-table td{ border-color: rgba(255,255,255,.2); }
+body.theme-dark .iteration-table th{ background: rgba(255,255,255,.08); }
+
 .overlay-header{ padding-top: 14px !important; padding-bottom: 12px !important; }
 .overlay-header .brand{ font-weight: 600; letter-spacing:.2px; }
 .overlay-header #menuClose{ width:32px; height:32px; border-radius:12px; padding:0; display:inline-flex; align-items:center; justify-content:center;
@@ -437,6 +448,24 @@ body.theme-light .assistant-plot{
 .assistant-plot--surface{
   height: 360px;
   overflow: hidden;
+}
+.assistant-plot-note{
+  width: calc(100% + 1rem);
+  max-width: 520px;
+  margin: 0.5rem -0.5rem 0;
+  background: rgba(255,255,255,0.9);
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: rgba(20,26,48,0.85);
+  box-shadow: 0 8px 26px rgba(15,49,83,0.12);
+}
+body.theme-dark .assistant-plot-note{
+  background: rgba(9,13,30,0.9);
+  border-color: rgba(255,255,255,0.18);
+  color: rgba(231,239,255,0.92);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.4);
 }
 .assistant-plot canvas,
 .assistant-plot svg{

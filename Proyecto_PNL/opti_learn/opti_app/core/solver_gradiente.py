@@ -74,12 +74,30 @@ def resolver_descenso_gradiente(
             if alpha < 1e-12:
                 break
 
-        iteraciones.append({'k': k, 'x_k': x_vec.tolist(), 'f_k': f_k, 'grad_norm': norma_grad, 'step': float(alpha)})
+        iteraciones.append({
+            'k': k,
+            'x_k': x_vec.tolist(),
+            'f_k': f_k,
+            'grad_norm': norma_grad,
+            'step': float(alpha),
+            'alpha': float(alpha),
+            'grad': valor_gradiente(x_vec).tolist(),
+        })
         x_vec = x_nuevo
         f_k = f_nuevo
 
         if abs(iteraciones[-1]['f_k'] - f_k) < tolerancia * (1.0 + abs(f_k)):
-            iteraciones.append({'k': k+1, 'x_k': x_vec.tolist(), 'f_k': f_k, 'grad_norm': float(np.linalg.norm(valor_gradiente(x_vec))), 'step': 0.0, 'notes': 'Convergencia por cambio relativo'})
+            grad_fin = valor_gradiente(x_vec)
+            iteraciones.append({
+                'k': k+1,
+                'x_k': x_vec.tolist(),
+                'f_k': f_k,
+                'grad_norm': float(np.linalg.norm(grad_fin)),
+                'step': 0.0,
+                'alpha': 0.0,
+                'grad': grad_fin.tolist(),
+                'notes': 'Convergencia por cambio relativo',
+            })
             break
 
     trajectory = []

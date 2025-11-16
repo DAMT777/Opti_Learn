@@ -13,6 +13,56 @@ let collapseBtn = null;
 let expandBtn = null;
 let heroRef = null; const getHero = () => (heroRef || (heroRef = document.getElementById('hero')));
 
+const METHOD_CONFIGS = {
+  gradient: {
+    title: 'Gradiente descendente',
+    subtitle: 'Problemas sin restricciones (o ya parametrizados) resueltos con descenso por iteraciones.',
+    placeholderObjective: '(x-1)**2 + (y-2)**2',
+    placeholderVars: 'x,y',
+    showConstraints: false,
+    constraintsHint: '',
+    solveLabel: 'Resolver gradiente',
+  },
+  lagrange: {
+    title: 'Método de Lagrange',
+    subtitle: 'Optimiza con restricciones de igualdad usando multiplicadores.',
+    placeholderObjective: 'x**2 + y**2',
+    placeholderVars: 'x,y',
+    showConstraints: true,
+    constraintsHint: 'Incluye restricciones de igualdad como [{"kind":"eq","expr":"x+y-1"}].',
+    solveLabel: 'Resolver Lagrange',
+  },
+  kkt: {
+    title: 'Condiciones KKT',
+    subtitle: 'Adecuado cuando hay desigualdades (>= o <=).',
+    placeholderObjective: '(x-3)**2 + (y+1)**2',
+    placeholderVars: 'x,y',
+    showConstraints: true,
+    constraintsHint: 'Usa kind "eq" o "ineq": [{"kind":"ineq","expr":"x+y-2"}].',
+    solveLabel: 'Resolver KKT',
+  },
+  qp: {
+    title: 'Programación cuadrática',
+    subtitle: 'Objetivo cuadrático con restricciones lineales o semidefinidas.',
+    placeholderObjective: '0.5*x**2 + 12*y**2 - 6*x + 4*y + 8',
+    placeholderVars: 'x,y',
+    showConstraints: true,
+    constraintsHint: 'Ingresa restricciones lineales en formato JSON. Ej: [{"kind":"ineq","expr":"x>=0"}].',
+    solveLabel: 'Resolver QP',
+  },
+  differential: {
+    title: 'Cálculo diferencial',
+    subtitle: 'Derivadas clásicas para problemas sin restricciones, útil como repaso teórico.',
+    placeholderObjective: 'x**3 - 3*x + 1',
+    placeholderVars: 'x',
+    showConstraints: false,
+    constraintsHint: '',
+    solveLabel: 'Resolver cálculo',
+  },
+};
+const defaultMethodKey = 'gradient';
+const methodState = { current: defaultMethodKey, busy: false };
+
 function resolvePlotTheme(){
   const dark = document.body?.classList?.contains('theme-dark');
   return dark ? {
@@ -61,6 +111,255 @@ function renderMarkdownToHTML(text){
   }catch{}
   // Fallback: escape basic
   return String(text||'').replace(/</g,'&lt;');
+}
+
+function initMethodPanel(){
+  const panel = document.getElementById('methodPanel');
+  if(!panel) return;
+  const closeBtn = document.getElementById('methodPanelClose');
+  const backdrop = panel.querySelector('.method-panel__backdrop');
+  const analyzeBtn = document.getElementById('methodAnalyze');
+  const solveBtn = document.getElementById('methodSolve');
+  document.querySelectorAll('.overlay-sidebar .item-link[data-method]').forEach(link=>{
+    link.addEventListener('click', (ev)=>{
+      ev.preventDefault();
+      const method = link.getAttribute('data-method') || defaultMethodKey;
+      openMethodPanel(method);
+    });
+  });
+  panel.querySelectorAll('[data-method-tab]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const method = btn.getAttribute('data-method-tab') || defaultMethodKey;
+      openMethodPanel(method);
+    });
+  });
+  if(closeBtn){ closeBtn.addEventListener('click', closeMethodPanel); }
+  if(backdrop){ backdrop.addEventListener('click', closeMethodPanel); }
+  document.addEventListener('keydown', (ev)=>{
+    if(ev.key === 'Escape' && panel.classList.contains('is-open')){
+      closeMethodPanel();
+    }
+  });
+  if(analyzeBtn){ analyzeBtn.addEventListener('click', ()=> handleMethodAction('analyze')); }
+  if(solveBtn){ solveBtn.addEventListener('click', ()=> handleMethodAction('solve')); }
+  // Config inicial
+  applyMethodConfig(defaultMethodKey);
+}
+
+function openMethodPanel(methodKey = defaultMethodKey){
+  const panel = document.getElementById('methodPanel');
+  if(!panel) return;
+  const key = METHOD_CONFIGS[methodKey] ? methodKey : defaultMethodKey;
+  methodState.current = key;
+  applyMethodConfig(key);
+  panel.classList.add('is-open');
+  panel.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('method-panel-open');
+  document.body.classList.remove('menu-open');
+}
+
+function closeMethodPanel(){
+  const panel = document.getElementById('methodPanel');
+  if(!panel) return;
+  panel.classList.remove('is-open');
+  panel.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('method-panel-open');
+}
+
+function applyMethodConfig(methodKey){
+  const cfg = METHOD_CONFIGS[methodKey] || METHOD_CONFIGS[defaultMethodKey];
+  const titleEl = document.getElementById('methodPanelTitle');
+  const subtitleEl = document.getElementById('methodPanelSubtitle');
+  const objectiveEl = document.getElementById('methodObjective');
+  const varsEl = document.getElementById('methodVariables');
+  const constraintsGroup = document.querySelector('[data-field="constraints"]');
+  const constraintsInput = document.getElementById('methodConstraints');
+  const constraintsHint = document.getElementById('methodConstraintsHint');
+  const solveBtn = document.getElementById('methodSolve');
+  if(titleEl) titleEl.textContent = cfg.title;
+  if(subtitleEl) subtitleEl.textContent = cfg.subtitle;
+  if(objectiveEl && cfg.placeholderObjective) objectiveEl.placeholder = cfg.placeholderObjective;
+  if(varsEl && cfg.placeholderVars) varsEl.placeholder = cfg.placeholderVars;
+  if(constraintsGroup){
+    constraintsGroup.classList.toggle('d-none', !cfg.showConstraints);
+  }
+  if(constraintsHint){
+    constraintsHint.textContent = cfg.showConstraints ? (cfg.constraintsHint || '') : '';
+  }
+  if(!cfg.showConstraints && constraintsInput){
+    constraintsInput.value = '';
+  }
+  if(solveBtn){
+    solveBtn.textContent = cfg.solveLabel || `Resolver ${cfg.title}`;
+    solveBtn.dataset.baseLabel = solveBtn.textContent;
+  }
+  document.querySelectorAll('[data-method-tab]').forEach(btn=>{
+    const key = btn.getAttribute('data-method-tab');
+    btn.classList.toggle('active', key === methodKey);
+  });
+}
+
+function collectMethodPayload(){
+  const objective = (document.getElementById('methodObjective')?.value || '').trim();
+  const variables = (document.getElementById('methodVariables')?.value || '')
+    .split(',')
+    .map(v=>v.trim())
+    .filter(Boolean);
+  const constraintsRaw = document.getElementById('methodConstraints')?.value || '';
+  let constraints = [];
+  if(constraintsRaw.trim()){
+    try{
+      constraints = JSON.parse(constraintsRaw);
+    }catch(error){
+      throw new Error('Revisa el formato JSON de las restricciones.');
+    }
+  }
+  return {
+    objective_expr: objective,
+    variables,
+    constraints,
+  };
+}
+
+function setMethodLoading(isLoading, action){
+  const analyzeBtn = document.getElementById('methodAnalyze');
+  const solveBtn = document.getElementById('methodSolve');
+  methodState.busy = isLoading;
+  [analyzeBtn, solveBtn].forEach(btn=>{
+    if(btn){
+      btn.disabled = isLoading;
+    }
+  });
+  if(analyzeBtn){
+    const base = analyzeBtn.dataset.baseLabel || analyzeBtn.textContent;
+    analyzeBtn.dataset.baseLabel = base;
+    analyzeBtn.innerHTML = (isLoading && action === 'analyze')
+      ? '<span class="spinner-border spinner-border-sm me-2"></span>Analizando...'
+      : base;
+  }
+  if(solveBtn){
+    const base = solveBtn.dataset.baseLabel || solveBtn.textContent;
+    solveBtn.dataset.baseLabel = base;
+    solveBtn.innerHTML = (isLoading && action === 'solve')
+      ? '<span class="spinner-border spinner-border-sm me-2"></span>Resolviendo...'
+      : base;
+  }
+}
+
+function showMethodResult(message, isError = false){
+  const box = document.getElementById('methodResult');
+  if(!box) return;
+  box.innerHTML = message;
+  box.classList.toggle('text-danger', isError);
+  box.classList.toggle('text-muted', !isError);
+  try{
+    if(window.MathJax && window.MathJax.typesetPromise){
+      window.MathJax.typesetPromise([box]);
+    }
+  }catch{}
+}
+
+function renderMethodIterations(items){
+  const container = document.getElementById('methodIterations');
+  const counter = document.getElementById('methodIterCount');
+  if(!container) return;
+  container.innerHTML = '';
+  const rows = Array.isArray(items) ? items : [];
+  rows.forEach(it=>{
+    const tr = document.createElement('tr');
+    const col = (val)=> (typeof val === 'number' ? Number(val).toFixed(6) : (val ?? ''));
+    tr.innerHTML = `
+      <td>${it.k ?? ''}</td>
+      <td>${col(it.f_k)}</td>
+      <td>${col(it.grad_norm)}</td>
+      <td>${col(it.step)}</td>
+    `;
+    container.appendChild(tr);
+  });
+  if(counter){
+    counter.textContent = `${rows.length} ${rows.length === 1 ? 'registro' : 'registros'}`;
+  }
+}
+
+async function handleMethodAction(action){
+  if(methodState.busy) return;
+  const cfg = METHOD_CONFIGS[methodState.current] || METHOD_CONFIGS[defaultMethodKey];
+  let payload;
+  try{
+    payload = collectMethodPayload();
+  }catch(err){
+    showMethodResult(`<span class="text-danger">${err.message}</span>`, true);
+    return;
+  }
+  if(!payload.objective_expr || !payload.variables.length){
+    showMethodResult('<span class="text-danger">Completa la función objetivo y al menos una variable.</span>', true);
+    return;
+  }
+  setMethodLoading(true, action);
+  try{
+    if(action === 'analyze'){
+      const response = await fetch('/api/problems/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken || '' },
+        body: JSON.stringify({
+          objective_expr: payload.objective_expr,
+          variables: payload.variables,
+          constraints: payload.constraints,
+        })
+      });
+      const meta = await response.json();
+      if(!response.ok){
+        throw new Error(meta.detail || 'No se pudo analizar el problema.');
+      }
+      const text = `
+        <div><strong>Variables:</strong> ${meta.variables?.join(', ') || '—'}</div>
+        <div><strong>Igualdades:</strong> ${meta.has_equalities ? 'Sí' : 'No'} · <strong>Desigualdades:</strong> ${meta.has_inequalities ? 'Sí' : 'No'}</div>
+        <div><strong>Cuadrática:</strong> ${meta.is_quadratic ? 'Sí' : 'No'} · <strong>Método sugerido:</strong> ${meta.method || cfg.title}</div>
+      `;
+      showMethodResult(text, false);
+      renderMethodIterations([]);
+      return;
+    }
+    // Crear problema y resolver
+    const createRes = await fetch('/api/problems/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken || '' },
+      body: JSON.stringify({
+        title: `Problema ${methodState.current}`,
+        objective_expr: payload.objective_expr,
+        variables: payload.variables,
+        constraints_raw: payload.constraints,
+      })
+    });
+    const created = await createRes.json();
+    if(!createRes.ok){
+      throw new Error(created.detail || 'No se pudo guardar el problema.');
+    }
+    const solveRes = await fetch(`/api/problems/${created.id}/solve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken || '' },
+      body: JSON.stringify({ method: methodState.current })
+    });
+    const sol = await solveRes.json();
+    if(!solveRes.ok){
+      showMethodResult(`<span class="text-danger">${sol.explanation_final || 'El solver no pudo converger.'}</span>`, true);
+      renderMethodIterations(sol.iterations || []);
+      return;
+    }
+    const html = `
+      <div class="small text-uppercase text-muted mb-1">${sol.method || cfg.title}</div>
+      <div><strong>Estado:</strong> ${sol.status || 'ok'} · <strong>Iteraciones:</strong> ${sol.iterations_count ?? '-'}</div>
+      <div>f* = <code>${sol.f_star ?? '-'}</code></div>
+      <div>x* = <code>${JSON.stringify(sol.x_star)}</code></div>
+      <div class="text-muted small mt-1">${sol.runtime_ms ? `${sol.runtime_ms} ms` : ''}</div>
+    `;
+    showMethodResult(html, false);
+    renderMethodIterations(sol.iterations || []);
+  }catch(err){
+    showMethodResult(`<span class="text-danger">${err.message || 'Ocurrió un error inesperado.'}</span>`, true);
+  }finally{
+    setMethodLoading(false, action);
+  }
 }
 
 function attachPlotForPayload(payload, bubble){
@@ -166,7 +465,7 @@ function renderGradientPlots(plotData, bubbleEl, options = { surfaceOnly: false 
     return;
   }
   const contourChart = appendPlotBubble(bubbleEl, md, 'contour');
-  renderContour(contourChart, plotData);
+  renderContour(contourChart, plotData, true);
   const surfaceChart = appendPlotBubble(bubbleEl, contourChart, 'surface');
   renderSurface(surfaceChart, plotData);
   appendPlotInterpretation(surfaceChart, plotData);
@@ -288,7 +587,6 @@ function renderContour(chart, plotData){
     { label: 'Trayectoria del gradiente', color: '#1f77b4' },
   ]);
 }
-
 function renderSurface(chart, plotData){
   const mesh = plotData.mesh;
   if(!mesh || ! mesh.x.length ) return;
@@ -605,6 +903,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(!insidePanel && !onMenuBtn){ closeMenu(); }
   }, true);
   document.addEventListener('keydown', (ev)=>{ if(ev.key==='Escape'){ closeMenu(); }});
+  initMethodPanel();
   const doSend = ()=>{
     if(!input) return;
     const text = (input.value || '').trim();

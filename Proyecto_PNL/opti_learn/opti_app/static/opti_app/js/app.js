@@ -13,6 +13,41 @@ let collapseBtn = null;
 let expandBtn = null;
 let heroRef = null; const getHero = () => (heroRef || (heroRef = document.getElementById('hero')));
 
+function resolvePlotTheme(){
+  const dark = document.body?.classList?.contains('theme-dark');
+  return dark ? {
+    paper: 'rgba(0,0,0,0)',
+    plot: 'rgba(0,0,0,0)',
+    axis: 'rgba(232,238,255,0.92)',
+    grid: 'rgba(255,255,255,0.25)',
+    zero: 'rgba(255,255,255,0.75)',
+    font: 'rgba(236,242,255,0.96)',
+    contourScale: 'Viridis',
+    sceneBg: 'rgba(12,18,40,0.85)',
+    surfaceScale: [
+      [0, '#6da2ff'],
+      [0.5, '#3c6df2'],
+      [1, '#162b6a'],
+    ],
+    surfaceOpacity: 0.92,
+  } : {
+    paper: 'rgba(0,0,0,0)',
+    plot: 'rgba(0,0,0,0)',
+    axis: 'rgba(12,23,45,0.9)',
+    grid: 'rgba(0,0,0,0.25)',
+    zero: 'rgba(0,0,0,0.7)',
+    font: 'rgba(14,25,54,0.95)',
+    contourScale: 'Portland',
+    sceneBg: 'rgba(245,249,255,0.95)',
+    surfaceScale: [
+      [0, '#dce9ff'],
+      [0.5, '#76a7ff'],
+      [1, '#0d55ce'],
+    ],
+    surfaceOpacity: 0.9,
+  };
+}
+
 // Markdown rendering helpers (Marked + DOMPurify via CDN)
 function renderMarkdownToHTML(text){
   try{
@@ -35,9 +70,7 @@ function attachPlotForPayload(payload, bubble){
   if(!bubbleEl) return;
   bubbleEl.querySelectorAll('.assistant-plot').forEach(node => node.remove());
   if(plotData && plotData.mesh && window.Plotly){
-    const varCount = Array.isArray(payload.plot.variables) ? payload.plot.variables.length : 0;
-    const surfaceOnly = (varCount === 2);
-    renderGradientPlots(plotData, bubbleEl, { surfaceOnly });
+    renderGradientPlots(plotData, bubbleEl, { surfaceOnly: false });
     return;
   }
   // Fallback legacy single plot
@@ -53,6 +86,7 @@ function attachPlotForPayload(payload, bubble){
     bubbleEl.appendChild(chart);
   }
   if(window.Plotly){
+    const theme = resolvePlotTheme();
     const varNames = Array.isArray(payload.plot.variables) ? payload.plot.variables : [];
     const data = [];
     if(varNames.length >= 2){
@@ -85,14 +119,24 @@ function attachPlotForPayload(payload, bubble){
     }
     const layout = {
       title: payload.plot.title || `Método ${payload.plot.method || 'desconocido'}`,
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      plot_bgcolor: 'rgba(0,0,0,0)',
-      margin: { t: 28, b: 28, l: 40, r: 16 },
-      font: { color: 'rgba(30,40,70,0.85)' },
+      paper_bgcolor: theme.paper,
+      plot_bgcolor: theme.plot,
+      margin: { t: 60, b: 28, l: 40, r: 16 },
+      font: { color: theme.font },
       legend: { orientation: 'h', y: -0.25 },
       height: 280,
       width: 520,
       dragmode: 'pan',
+      xaxis: {
+        color: theme.axis,
+        gridcolor: theme.grid,
+        zerolinecolor: theme.zero,
+      },
+      yaxis: {
+        color: theme.axis,
+        gridcolor: theme.grid,
+        zerolinecolor: theme.zero,
+      },
     };
     const config = {
       responsive: true,
@@ -125,9 +169,7 @@ function renderGradientPlots(plotData, bubbleEl, options = { surfaceOnly: false 
   renderContour(contourChart, plotData);
   const surfaceChart = appendPlotBubble(bubbleEl, contourChart, 'surface');
   renderSurface(surfaceChart, plotData);
-  const fxChart = appendPlotBubble(bubbleEl, surfaceChart, 'fx');
-  renderFxCurve(fxChart, plotData);
-  appendPlotInterpretation(fxChart, plotData);
+  appendPlotInterpretation(surfaceChart, plotData);
 }
 
 function appendPlotBubble(parent, refNode, modifier){
@@ -144,15 +186,58 @@ function appendPlotBubble(parent, refNode, modifier){
 function renderContour(chart, plotData){
   const mesh = plotData.mesh;
   if(!mesh || !mesh.x.length || !mesh.y.length) return;
+  const theme = resolvePlotTheme();
   const trajectory = plotData.trajectory || { x: [], y: [] };
+  const tx = Array.isArray(trajectory.x) ? trajectory.x.filter((v)=>typeof v === 'number') : [];
+  const ty = Array.isArray(trajectory.y) ? trajectory.y.filter((v)=>typeof v === 'number') : [];
+  const xMin = tx.length ? Math.min(...tx) : mesh.x[0];
+  const xMax = tx.length ? Math.max(...tx) : mesh.x[mesh.x.length - 1];
+  const yMin = ty.length ? Math.min(...ty) : mesh.y[0];
+  const yMax = ty.length ? Math.max(...ty) : mesh.y[mesh.y.length - 1];
+  const padRange = (min, max) => {
+    let span = max - min;
+    if (span === 0) {
+      span = Math.abs(min) > 1 ? Math.abs(min) : 1;
+      min -= span * 0.5;
+      max += span * 0.5;
+    }
+    const pad = Math.max(span * 0.25, 2);
+    return [min - pad, max + pad];
+  };
+  const xRange = padRange(xMin, xMax);
+  const yRange = padRange(yMin, yMax);
+  const zValues = mesh.z.flat ? mesh.z.flat() : [].concat(...mesh.z);
+  const zMin = Math.min(...zValues);
+  const zMax = Math.max(...zValues);
+  const trajZ = Array.isArray(plotData.trajectory?.f)
+    ? plotData.trajectory.f.filter((v) => typeof v === 'number')
+    : [];
+  let zStart = zMin;
+  let zEnd = zMax;
+  if (trajZ.length) {
+    const localMin = Math.min(...trajZ);
+    const localMax = Math.max(...trajZ);
+    const localSpan = Math.max(localMax - localMin, 1e-3);
+    const buffer = Math.max(localSpan * 0.6, 1);
+    zStart = Math.max(zMin, localMin - buffer);
+    zEnd = Math.min(zMax, localMax + buffer);
+  }
+  const contourStep = Math.max((zEnd - zStart) / 18, (zMax - zMin) / 40, 1e-3);
   const contourTrace = {
     type: 'contour',
     x: mesh.x,
     y: mesh.y,
     z: mesh.z,
-    colorscale: 'Viridis',
-    contours: { coloring: 'lines', showlabels: false },
+    colorscale: theme.contourScale,
+    contours: {
+      coloring: 'heatmap',
+      showlabels: false,
+      start: zStart,
+      end: zEnd,
+      size: contourStep,
+    },
     showscale: false,
+    opacity: 0.85,
   };
   const trailTrace = {
     x: trajectory.x,
@@ -162,20 +247,44 @@ function renderContour(chart, plotData){
     marker: { size: 6, color: '#1f77b4' },
     line: { color: '#1f77b4', width: 3, shape: 'spline' },
   };
-  const config = { responsive: true, displayModeBar: false };
+  const config = {
+    responsive: true,
+    displayModeBar: true,
+    scrollZoom: false,
+    modeBarButtonsToRemove: ['sendDataToCloud', 'pan2d', 'select2d', 'lasso2d'],
+  };
   const layout = {
     title: 'Curvas de nivel',
-    paper_bgcolor: 'rgba(0,0,0,0)',
-    plot_bgcolor: 'rgba(0,0,0,0)',
-    margin: { t: 36, b: 28, l: 40, r: 16 },
+    paper_bgcolor: theme.paper,
+    plot_bgcolor: theme.plot,
+    margin: { t: 68, b: 28, l: 40, r: 16 },
     height: 260,
     legend: { orientation: 'h', y: -0.2 },
-    xaxis: { showgrid: true, zeroline: true },
-    yaxis: { showgrid: true, zeroline: true },
+    xaxis: {
+      showgrid: true,
+      zeroline: true,
+      range: xRange,
+      gridcolor: theme.grid,
+      color: theme.axis,
+      zerolinewidth: 1.2,
+      zerolinecolor: theme.zero,
+      fixedrange: true,
+    },
+    yaxis: {
+      showgrid: true,
+      zeroline: true,
+      range: yRange,
+      gridcolor: theme.grid,
+      color: theme.axis,
+      zerolinewidth: 1.2,
+      zerolinecolor: theme.zero,
+      fixedrange: true,
+    },
+    dragmode: false,
   };
   Plotly.newPlot(chart, [contourTrace, trailTrace], layout, config);
   insertPlotLegend(chart, [
-    { label: 'Curtas de nivel f(x,y)', color: '#6c757d' },
+    { label: 'Curvas de nivel f(x,y)', color: '#6c757d' },
     { label: 'Trayectoria del gradiente', color: '#1f77b4' },
   ]);
 }
@@ -183,15 +292,39 @@ function renderContour(chart, plotData){
 function renderSurface(chart, plotData){
   const mesh = plotData.mesh;
   if(!mesh || ! mesh.x.length ) return;
+  const theme = resolvePlotTheme();
   const trajectory = plotData.trajectory || { x: [], y: [], f: [] };
+  const padLinear = (min, max) => {
+    let span = max - min;
+    if (span === 0) {
+      span = Math.max(Math.abs(min), Math.abs(max), 1);
+      min -= span * 0.5;
+      max += span * 0.5;
+    }
+    const pad = Math.max(span * 0.3, 2);
+    return [min - pad, max + pad];
+  };
+  const tx = Array.isArray(trajectory.x) ? trajectory.x.filter((v)=>typeof v === 'number') : [];
+  const ty = Array.isArray(trajectory.y) ? trajectory.y.filter((v)=>typeof v === 'number') : [];
+  const tf = Array.isArray(trajectory.f) ? trajectory.f.filter((v)=>typeof v === 'number') : [];
+  const xDataMin = tx.length ? Math.min(...tx) : mesh.x[0];
+  const xDataMax = tx.length ? Math.max(...tx) : mesh.x[mesh.x.length - 1];
+  const yDataMin = ty.length ? Math.min(...ty) : mesh.y[0];
+  const yDataMax = ty.length ? Math.max(...ty) : mesh.y[mesh.y.length - 1];
+  const xRange = padLinear(xDataMin, xDataMax);
+  const yRange = padLinear(yDataMin, yDataMax);
+  const zValues = mesh.z.flat ? mesh.z.flat() : [].concat(...mesh.z);
+  const zMin = tf.length ? Math.min(...tf) : Math.min(...zValues);
+  const zMax = tf.length ? Math.max(...tf) : Math.max(...zValues);
+  const zRange = padLinear(zMin, zMax);
   const surfaceTrace = {
     type: 'surface',
     x: mesh.x,
     y: mesh.y,
     z: mesh.z,
-    colorscale: 'Blues',
+    colorscale: theme.surfaceScale,
     showscale: false,
-    opacity: 0.9,
+    opacity: theme.surfaceOpacity,
   };
   const pathTrace = {
     type: 'scatter3d',
@@ -205,15 +338,34 @@ function renderSurface(chart, plotData){
   };
   const layout = {
     title: 'Superficie',
-    margin: { t: 36, b: 20, l: 20, r: 20 },
+    margin: { t: 70, b: 20, l: 20, r: 20 },
     scene: {
-      aspectmode: 'auto',
-      xaxis: { title: 'x', gridcolor: 'rgba(255,255,255,0.2)', zerolinecolor: 'rgba(255,255,255,0.25)' },
-      yaxis: { title: 'y', gridcolor: 'rgba(255,255,255,0.2)', zerolinecolor: 'rgba(255,255,255,0.25)' },
-      zaxis: { title: 'f(x)', gridcolor: 'rgba(255,255,255,0.2)', zerolinecolor: 'rgba(255,255,255,0.25)' },
-      backgroundcolor: 'rgba(12,18,40,0.85)',
+      aspectmode: 'cube',
+      camera: { eye: { x: 1.2, y: -1.3, z: 0.9 } },
+      xaxis: {
+        title: 'x',
+        gridcolor: theme.grid,
+        zerolinecolor: theme.zero,
+        color: theme.axis,
+        range: xRange,
+      },
+      yaxis: {
+        title: 'y',
+        gridcolor: theme.grid,
+        zerolinecolor: theme.zero,
+        color: theme.axis,
+        range: yRange,
+      },
+      zaxis: {
+        title: 'f(x)',
+        gridcolor: theme.grid,
+        zerolinecolor: theme.zero,
+        color: theme.axis,
+        range: zRange,
+      },
+      backgroundcolor: theme.sceneBg,
     },
-    paper_bgcolor: 'rgba(0,0,0,0)',
+    paper_bgcolor: theme.paper,
   };
   const config = {
     responsive: true,
@@ -262,7 +414,7 @@ function renderFxCurve(chart, plotData){
 function appendPlotInterpretation(anchorChart, plotData){
   if(!anchorChart) return;
   const wrapper = document.createElement('div');
-  wrapper.className = 'assistant-plot-note';
+  wrapper.className = 'assistant-plot-note as-message';
   const iterCount = plotData.trajectory && Array.isArray(plotData.trajectory.x) ? plotData.trajectory.x.length : 0;
   const endX = (plotData.trajectory?.x ?? []).slice(-1)[0];
   const endY = (plotData.trajectory?.y ?? []).slice(-1)[0];

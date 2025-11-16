@@ -126,19 +126,6 @@ def build_gradient_report(
         "La secuencia de $\\alpha_k$ evidencia cómo la búsqueda de línea modera el descenso para evitar divergencias, "
         "y las últimas iteraciones muestran pasos muy pequeños, confirmando la convergencia."
     )
-    lines.append("")
-    resumen = {
-        "metodo": resultado.get('method', 'gradient'),
-        "razon": razon,
-        "resultado": {
-            "x_optimo": resultado.get('x_star'),
-            "f_optimo": resultado.get('f_star'),
-        },
-        "explicacion": "Datos calculados y verificados por el solver local.",
-    }
-    lines.append("```json")
-    lines.append(json.dumps(resumen, ensure_ascii=False, indent=2))
-    lines.append("```")
     return "\n".join(lines)
 
 
@@ -167,7 +154,7 @@ def build_pre_solution_analysis(
     lines.append("### Estrategia paso a paso")
     lines.append("1. Calcular el gradiente simbólico y numérico $\\nabla f(x)$.")
     lines.append("2. Evaluar la norma del gradiente para diagnosticar la dirección de descenso.")
-    lines.append("3. Seleccionar tamaño de paso $\\alpha_k$ mediante Armijo (oline search).")
+    lines.append("3. Seleccionar tamaño de paso $\\alpha_k$ mediante Armijo (line search).")
     lines.append("4. Actualizar $x_{k+1} = x_k - \\alpha_k \\nabla f(x_k)$.")
     lines.append(f"5. Repetir hasta que $\\|\\nabla f(x_k)\\| < {parametros.get('tol', 1e-6)}$ o $k \\ge {parametros.get('max_iter', 200)}$.")
     lines.append("")

@@ -1,0 +1,39 @@
+{% extends "methods/base.html" %}
+
+{% block method_badge %}
+<div class="method-hero__badge"><i class="bi bi-graph-up-arrow"></i> Programación cuadrática</div>
+{% endblock %}
+
+{% block method_description %}
+Define un objetivo cuadrático y restricciones lineales para evaluar la trayectoria óptima. Ideal para problemas convexos o con penalizaciones cuadráticas.
+{% endblock %}
+
+{% block method_stats %}
+<div><span>Tipo</span>QP Convexo</div>
+<div><span>Restricciones</span>Lineales</div>
+<div><span>Salida</span>x*, f* y estado</div>
+{% endblock %}
+
+{% block method_form_required %}
+<div class="mb-2">
+  <label class="form-label">Función objetivo (SymPy)</label>
+  <textarea id="objective" class="form-control" rows="3" placeholder="0.5*x**2 + 12*y**2 - 6*x + 4*y + 8"></textarea>
+</div>
+<div class="mb-2">
+  <label class="form-label">Variables (separadas por coma)</label>
+  <input id="variables" class="form-control" placeholder="x,y">
+</div>
+<div class="mb-3">
+  <label class="form-label">Restricciones lineales (JSON)</label>
+  <textarea id="constraints" class="form-control" rows="2" placeholder='[{"kind":"ineq","expr":"x>=0"},{"kind":"ineq","expr":"y>=0"}]'></textarea>
+  <div class="form-text text-muted">Pronto podrás cargar matrices H y G directamente.</div>
+</div>
+{% endblock %}
+
+{% block method_tips %}
+<li><i class="bi bi-grid"></i><span>Si aún no tienes matrices, usa la forma simbólica equivalente para describir H y q.</span></li>
+<li><i class="bi bi-geo-alt"></i><span>Verifica que H sea semidefinida positiva para garantizar mínimos globales.</span></li>
+<li><i class="bi bi-diagram-3"></i><span>Declara cada restricción lineal como igualdad o desigualdad según corresponda.</span></li>
+{% endblock %}
+
+{% block method_primary_button %}Resolver QP{% endblock %}

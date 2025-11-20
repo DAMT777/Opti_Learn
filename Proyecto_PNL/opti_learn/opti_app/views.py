@@ -123,8 +123,19 @@ def method_view(request, method_key: str):
         'gradient': 'Gradiente Descendente',
         'qp': 'Programación Cuadrática',
     }
-    title = titles.get(method_key, method_key)
-    return render(request, 'methods/form.html', { 'method_key': method_key, 'title': title })
+    template_map = {
+        'gradient': 'methods/gradient.html',
+        'lagrange': 'methods/lagrange.html',
+        'kkt': 'methods/kkt.html',
+        'qp': 'methods/qp.html',
+        'differential': 'methods/differential.html',
+    }
+    template_name = template_map.get(method_key, 'methods/gradient.html')
+    context = {
+        'method_key': method_key,
+        'title': titles.get(method_key, method_key),
+    }
+    return render(request, template_name, context)
 
 
 class ParseProblemAPIView(APIView):
@@ -198,6 +209,7 @@ class ProblemViewSet(viewsets.ModelViewSet):
         solucion = Solution(problem=problema, method=metodo, tolerance=tolerancia)
         solucion.save()
 
+        resultado = None
         try:
             if metodo == 'gradient':
                 resultado = solver_gradiente.solve(
@@ -239,7 +251,10 @@ class ProblemViewSet(viewsets.ModelViewSet):
             solucion.save()
             return Response(SolutionSerializer(solucion).data, status=500)
 
-        return Response(SolutionSerializer(solucion).data)
+        response_data = SolutionSerializer(solucion).data
+        if resultado and resultado.get('plot_data'):
+            response_data['plot_data'] = resultado['plot_data']
+        return Response(response_data)
 
 
 class SolutionViewSet(viewsets.ReadOnlyModelViewSet):

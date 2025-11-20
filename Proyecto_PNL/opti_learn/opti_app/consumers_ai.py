@@ -1,5 +1,7 @@
 import json
 import asyncio
+import ast
+import re
 from typing import Any, Dict, List
 
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -162,6 +164,129 @@ def build_pre_solution_analysis(
     return "\n".join(lines)
 
 
+METHOD_KEYWORDS = {
+    'gradiente': 'gradient',
+    'gradient': 'gradient',
+    'gradual': 'gradient',
+    'lagrange': 'lagrange',
+    'lagrangiano': 'lagrange',
+    'kkt': 'kkt',
+    'karush': 'kkt',
+    'cuadratic': 'qp',
+    'quadratic': 'qp',
+    'qp': 'qp',
+    'cálculo': 'differential',
+    'calculo': 'differential',
+}
+
+
+def _clean_expr(expr: str) -> str:
+    expr = expr.strip()
+    if len(expr) >= 2 and expr[0] in "\"'`" and expr[-1] == expr[0]:
+        expr = expr[1:-1]
+    return expr.strip().rstrip(';, .')
+
+
+def _parse_numeric_list(snippet: str) -> List[float] | None:
+    snippet = snippet.strip()
+    try:
+        value = ast.literal_eval(snippet)
+    except Exception:
+        snippet = snippet.strip('[](){}')
+        parts = [p.strip() for p in re.split(r'[;,]', snippet) if p.strip()]
+        if not parts:
+            return None
+        try:
+            value = [float(p) for p in parts]
+        except Exception:
+            return None
+    if isinstance(value, (int, float)):
+        return [float(value)]
+    if isinstance(value, (list, tuple)):
+        cleaned = []
+        for item in value:
+            try:
+                cleaned.append(float(item))
+            except Exception:
+                return None
+        return cleaned
+    return None
+
+
+def _parse_variables(snippet: str) -> List[str]:
+    snippet = snippet.strip()
+    if not snippet:
+        return []
+    if snippet.startswith('['):
+        try:
+            value = ast.literal_eval(snippet)
+            if isinstance(value, (list, tuple)):
+                return [str(v).strip() for v in value if str(v).strip()]
+        except Exception:
+            pass
+    return [part.strip() for part in re.split(r'[,\s]+', snippet) if part.strip()]
+
+
+def parse_payload_from_text(message: str) -> Dict[str, Any] | None:
+    text = message or ''
+    lowered = text.lower()
+    detected_method = None
+    for keyword, mapped in METHOD_KEYWORDS.items():
+        if keyword in lowered:
+            detected_method = mapped
+            break
+    # Solo soportamos gradiente en este flujo
+    if detected_method and detected_method != 'gradient':
+        return None
+
+    expr = None
+    expr_patterns = [
+        r'(?:func(?:ión|ion|objective|objetivo)[^:]*:\s*)(?P<expr>"[^"]+"|\'[^\']+\'|`[^`]+`|[^\n,;]+)',
+        r'f\s*\([^\)]*\)\s*=\s*(?P<expr>[^\n,;]+)',
+    ]
+    for pattern in expr_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            expr = _clean_expr(match.group('expr'))
+            if expr:
+                break
+    if not expr:
+        return None
+
+    payload: Dict[str, Any] = {
+        'objective_expr': expr,
+        'constraints': [],
+    }
+    var_match = re.search(r'variables?\s*[:=]\s*(\[[^\]]+\]|[a-zA-Z_,\s]+)', text, re.IGNORECASE)
+    if var_match:
+        vars_list = _parse_variables(var_match.group(1))
+        if vars_list:
+            payload['variables'] = vars_list
+
+    x0_match = re.search(r'x[_\s]?0\s*[:=]\s*(\[[^\]]+\]|\([^\)]+\)|\{[^\}]+\})', text, re.IGNORECASE)
+    if x0_match:
+        x0_values = _parse_numeric_list(x0_match.group(1))
+        if x0_values is not None:
+            payload['x0'] = x0_values
+
+    tol_match = re.search(r'tol(?:erancia)?\s*[:=]\s*([0-9eE\.\-+]+)', text, re.IGNORECASE)
+    if tol_match:
+        try:
+            payload['tol'] = float(tol_match.group(1))
+        except Exception:
+            pass
+
+    max_iter_match = re.search(r'(?:max(?:imo)?\s*iter|iteraciones\s*max)\s*[:=]\s*(\d+)', text, re.IGNORECASE)
+    if max_iter_match:
+        try:
+            payload['max_iter'] = int(max_iter_match.group(1))
+        except Exception:
+            pass
+
+    payload['method'] = detected_method or 'gradient'
+    return payload
+
+
 def solve_gradient_payload(payload: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
     problema = {
         'objective_expr': payload.get('objective_expr'),
@@ -253,6 +378,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     structured_payload = candidate
             except Exception:
                 structured_payload = None
+            if not structured_payload:
+                structured_payload = parse_payload_from_text(text)
 
             if structured_payload:
                 try:

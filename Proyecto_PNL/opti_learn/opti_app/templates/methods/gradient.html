@@ -1,0 +1,34 @@
+{% extends "methods/base.html" %}
+
+{% block method_badge %}
+<div class="method-hero__badge"><i class="bi bi-sliders"></i> Método sin restricciones</div>
+{% endblock %}
+
+{% block method_description %}
+Ingresa una función en variables libres (2D para visualizar gráficas) y observa cómo el descenso por gradiente converge hacia el mínimo.
+{% endblock %}
+
+{% block method_stats %}
+<div><span>Tipo</span>Descenso iterativo</div>
+<div><span>Datos necesarios</span>f(x) y variables</div>
+<div><span>Salida</span>Trayectoria, x*, f*</div>
+{% endblock %}
+
+{% block method_form_required %}
+<div class="mb-2">
+  <label class="form-label">Función objetivo (SymPy)</label>
+  <textarea id="objective" class="form-control" rows="3" placeholder="(x-1)**2 + (y-2)**2"></textarea>
+</div>
+<div class="mb-2">
+  <label class="form-label">Variables (separadas por coma)</label>
+  <input id="variables" class="form-control" placeholder="x,y">
+</div>
+{% endblock %}
+
+{% block method_tips %}
+<li><i class="bi bi-lightning-charge"></i><span>Usa valores iniciales cercanos al óptimo para acelerar la convergencia.</span></li>
+<li><i class="bi bi-graph-up"></i><span>Verifica que la función sea diferenciable para evitar saltos o divergencias.</span></li>
+<li><i class="bi bi-arrows-move"></i><span>El vector gradiente indica la dirección de mayor incremento; avanzamos en sentido opuesto.</span></li>
+{% endblock %}
+
+{% block method_primary_button %}Resolver gradiente{% endblock %}

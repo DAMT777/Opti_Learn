@@ -67,11 +67,11 @@
       <div class="overlay-body p-3">
         <div class="mb-2 small text-dark-50">Métodos disponibles</div>
         <ul class="list-unstyled small nav-vertical">
-          <li><a class="item-link" href="#" role="button" data-method="qp"><i class="bi bi-graph-up-arrow me-2"></i>Programación cuadrática</a></li>
-          <li><a class="item-link" href="#" role="button" data-method="lagrange"><i class="bi bi-flag me-2"></i>Lagrange</a></li>
-          <li><a class="item-link" href="#" role="button" data-method="kkt"><i class="bi bi-shield-check me-2"></i>Condiciones KKT</a></li>
-          <li><a class="item-link" href="#" role="button" data-method="gradient"><i class="bi bi-sliders me-2"></i>Gradiente</a></li>
-          <li><a class="item-link" href="#" role="button" data-method="differential"><i class="bi bi-calculator me-2"></i>Cálculo diferencial</a></li>
+          <li><a class="item-link" href="/methods/qp"><i class="bi bi-graph-up-arrow me-2"></i>Programación cuadrática</a></li>
+          <li><a class="item-link" href="/methods/lagrange"><i class="bi bi-flag me-2"></i>Lagrange</a></li>
+          <li><a class="item-link" href="/methods/kkt"><i class="bi bi-shield-check me-2"></i>Condiciones KKT</a></li>
+          <li><a class="item-link" href="/methods/gradient"><i class="bi bi-sliders me-2"></i>Gradiente</a></li>
+          <li><a class="item-link" href="/methods/differential"><i class="bi bi-calculator me-2"></i>Cálculo diferencial</a></li>
         </ul>
       </div>
       <div class="overlay-footer mt-auto p-3 small d-flex align-items-center gap-2">
@@ -82,71 +82,6 @@
         </div>
       </div>
     </aside>
-
-    <!-- Panel de métodos manuales -->
-    <section id="methodPanel" class="method-panel" aria-hidden="true">
-      <div class="method-panel__backdrop"></div>
-      <div class="method-panel__sheet" role="dialog" aria-modal="true" aria-labelledby="methodPanelTitle">
-        <header class="method-panel__header">
-          <div>
-            <p class="eyebrow text-uppercase small mb-1">Resolución guiada</p>
-            <h5 id="methodPanelTitle" class="mb-1">Gradiente descendente</h5>
-            <p id="methodPanelSubtitle" class="text-muted small mb-0">Completa los datos y resolvemos con el solver local.</p>
-          </div>
-          <button type="button" class="btn btn-icon" id="methodPanelClose" title="Cerrar panel"><i class="bi bi-x-lg"></i></button>
-        </header>
-        <div class="method-panel__tabs" role="tablist">
-          <button type="button" class="method-tab" data-method-tab="gradient">Gradiente</button>
-          <button type="button" class="method-tab" data-method-tab="lagrange">Lagrange</button>
-          <button type="button" class="method-tab" data-method-tab="kkt">KKT</button>
-          <button type="button" class="method-tab" data-method-tab="qp">Programación cuadrática</button>
-          <button type="button" class="method-tab" data-method-tab="differential">Cálculo diferencial</button>
-        </div>
-        <div class="method-panel__body">
-          <form class="method-form" id="methodForm">
-            <div class="method-form__group">
-              <label for="methodObjective" class="form-label">Función objetivo (SymPy)</label>
-              <textarea id="methodObjective" class="form-control" rows="3" placeholder="(x-1)**2 + (y-2)**2"></textarea>
-            </div>
-            <div class="method-form__group">
-              <label for="methodVariables" class="form-label">Variables (separadas por coma)</label>
-              <input id="methodVariables" class="form-control" placeholder="x,y"/>
-            </div>
-            <div class="method-form__group d-none" data-field="constraints">
-              <label for="methodConstraints" class="form-label">Restricciones (JSON)</label>
-              <textarea id="methodConstraints" class="form-control" rows="2" placeholder='[{"kind":"eq","expr":"x+y-1"}]'></textarea>
-              <div id="methodConstraintsHint" class="form-text text-muted small mt-1"></div>
-            </div>
-            <div class="method-form__actions">
-              <button type="button" id="methodAnalyze" class="btn btn-outline-light">Analizar problema</button>
-              <button type="button" id="methodSolve" class="btn btn-primary">Resolver método</button>
-            </div>
-          </form>
-          <div class="method-panel__feedback">
-            <div id="methodResult" class="method-panel__result small text-muted">Aquí verás el método seleccionado, el estado de la solución y el punto óptimo.</div>
-            <div class="method-panel__iterations mt-3">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0">Iteraciones</h6>
-                <span class="small text-muted" id="methodIterCount">0 registros</span>
-              </div>
-              <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                  <thead>
-                    <tr>
-                      <th>k</th>
-                      <th>f(x_k)</th>
-                      <th>||∇f||</th>
-                      <th>α_k</th>
-                    </tr>
-                  </thead>
-                  <tbody id="methodIterations"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.34.0.min.js"></script>

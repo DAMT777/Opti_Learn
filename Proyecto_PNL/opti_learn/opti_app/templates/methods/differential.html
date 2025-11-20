@@ -1,0 +1,34 @@
+{% extends "methods/base.html" %}
+
+{% block method_badge %}
+<div class="method-hero__badge"><i class="bi bi-calculator"></i> Sesión teórica</div>
+{% endblock %}
+
+{% block method_description %}
+Practica derivadas, gradientes y clasificación de puntos críticos para problemas sin restricciones antes de pasar a métodos numéricos.
+{% endblock %}
+
+{% block method_stats %}
+<div><span>Tipo</span>Cálculo diferencial</div>
+<div><span>Aplicación</span>Problemas 1-2 variables</div>
+<div><span>Salida</span>Puntos críticos e interpretación</div>
+{% endblock %}
+
+{% block method_form_required %}
+<div class="mb-2">
+  <label class="form-label">Función objetivo (SymPy)</label>
+  <textarea id="objective" class="form-control" rows="3" placeholder="x**3 - 3*x + 1"></textarea>
+</div>
+<div class="mb-2">
+  <label class="form-label">Variables (separadas por coma)</label>
+  <input id="variables" class="form-control" placeholder="x">
+</div>
+{% endblock %}
+
+{% block method_tips %}
+<li><i class="bi bi-braces"></i><span>Incluye todas las variables activas para construir el gradiente completo.</span></li>
+<li><i class="bi bi-bullseye"></i><span>El solver resaltará si cada punto crítico es mínimo, máximo o silla.</span></li>
+<li><i class="bi bi-clipboard-data"></i><span>Usa los resultados para validar tus derivaciones manuales.</span></li>
+{% endblock %}
+
+{% block method_primary_button %}Resolver cálculo{% endblock %}

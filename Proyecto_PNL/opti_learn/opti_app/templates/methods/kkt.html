@@ -1,0 +1,39 @@
+{% extends "methods/base.html" %}
+
+{% block method_badge %}
+<div class="method-hero__badge"><i class="bi bi-shield-check"></i> Condiciones mixtas</div>
+{% endblock %}
+
+{% block method_description %}
+Combina igualdad y desigualdad para estudiar la factibilidad de soluciones mediante las condiciones de Karush-Kuhn-Tucker.
+{% endblock %}
+
+{% block method_stats %}
+<div><span>Tipo</span>KKT</div>
+<div><span>Restricciones</span>g(x)≥0 / h(x)=0</div>
+<div><span>Salida</span>x*, λ, μ e interpretación</div>
+{% endblock %}
+
+{% block method_form_required %}
+<div class="mb-2">
+  <label class="form-label">Función objetivo (SymPy)</label>
+  <textarea id="objective" class="form-control" rows="3" placeholder="(x-3)**2 + (y+1)**2"></textarea>
+</div>
+<div class="mb-2">
+  <label class="form-label">Variables (separadas por coma)</label>
+  <input id="variables" class="form-control" placeholder="x,y">
+</div>
+<div class="mb-2">
+  <label class="form-label">Restricciones (JSON)</label>
+  <textarea id="constraints" class="form-control" rows="2" placeholder='[{"kind":"eq","expr":"x+y-1"},{"kind":"ineq","expr":"x>=0"}]'></textarea>
+  <div class="form-text text-muted">Usa <code>kind: "eq"</code> para igualdades y <code>"ineq"</code> para desigualdades.</div>
+</div>
+{% endblock %}
+
+{% block method_tips %}
+<li><i class="bi bi-layers"></i><span>Identifica qué restricciones podrían quedar activas para interpretar μ.</span></li>
+<li><i class="bi bi-eye"></i><span>Si el problema es convexo, cumplir las KKT garantiza optimalidad global.</span></li>
+<li><i class="bi bi-rulers"></i><span>Expresa las desigualdades en forma estándar (<=0 o >=0) para evitar ambigüedades.</span></li>
+{% endblock %}
+
+{% block method_primary_button %}Resolver KKT{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "methods/base.html" %}
+
+{% block method_badge %}
+<div class="method-hero__badge"><i class="bi bi-flag"></i> Restricciones de igualdad</div>
+{% endblock %}
+
+{% block method_description %}
+Modela problemas con ecuaciones de igualdad. El solver construirá el Lagrangiano y mostrará cómo los multiplicadores equilibran las restricciones.
+{% endblock %}
+
+{% block method_stats %}
+<div><span>Tipo</span>Lagrange</div>
+<div><span>Variables</span>f(x) + ecuaciones g(x)=0</div>
+<div><span>Salida</span>x*, λ y verificación</div>
+{% endblock %}
+
+{% block method_form_required %}
+<div class="mb-2">
+  <label class="form-label">Función objetivo (SymPy)</label>
+  <textarea id="objective" class="form-control" rows="3" placeholder="x**2 + y**2"></textarea>
+</div>
+<div class="mb-2">
+  <label class="form-label">Variables (separadas por coma)</label>
+  <input id="variables" class="form-control" placeholder="x,y">
+</div>
+<div class="mb-2">
+  <label class="form-label">Restricciones de igualdad (JSON)</label>
+  <textarea id="constraints" class="form-control" rows="2" placeholder='[{"kind":"eq","expr":"x + y - 1"}]'></textarea>
+  <div class="form-text text-muted">Usa <code>kind: "eq"</code> para cada ecuación.</div>
+</div>
+{% endblock %}
+
+{% block method_tips %}
+<li><i class="bi bi-diagram-3"></i><span>Debes incluir tantas ecuaciones como restricciones tenga el problema.</span></li>
+<li><i class="bi bi-layout-text-sidebar"></i><span>El resultado muestra si el gradiente queda alineado con la combinación lineal de las restricciones.</span></li>
+<li><i class="bi bi-search"></i><span>Utiliza el análisis para verificar si hay redundancia o falta de ecuaciones.</span></li>
+{% endblock %}
+
+{% block method_primary_button %}Resolver Lagrange{% endblock %}

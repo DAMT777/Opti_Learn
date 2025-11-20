@@ -40,6 +40,23 @@ def _build_mesh(f_num, puntos: np.ndarray, resolution: int = 60):
     }
 
 
+def _build_curve_1d(f_num, puntos: np.ndarray, resolution: int = 200):
+    xs = puntos[:, 0]
+    x_min, x_max = float(xs.min()), float(xs.max())
+    x_center = float((x_min + x_max) / 2.0)
+    range_x = max(x_max - x_min, 1e-3)
+    max_abs_x = float(np.max(np.abs(xs))) if xs.size else 0.0
+    half = max(range_x * 0.75, max_abs_x + 3.0, 6.0)
+    x_lin = np.linspace(x_center - half, x_center + half, resolution)
+    y_vals = []
+    for xv in x_lin:
+        try:
+            y_vals.append(float(np.array(f_num([xv]), dtype=float)))
+        except Exception:
+            y_vals.append(float('nan'))
+    return {'x': x_lin.tolist(), 'f': y_vals}
+
+
 def resolver_descenso_gradiente(
     expresion_objetivo: str,
     nombres_variables: List[str],
@@ -115,8 +132,19 @@ def resolver_descenso_gradiente(
             fx_values.append(float(it.get('f_k', 0.0)))
 
     plot_data: Dict[str, Any] = {}
-    if n_dim == 2 and len(points) >= 2:
-        point_array = np.stack(points)
+    point_array = np.stack(points) if points else np.empty((0, n_dim))
+    fx_curve = {'iter': list(range(len(fx_values))), 'f': fx_values}
+    if n_dim == 1 and point_array.size > 0:
+        curve = _build_curve_1d(f_num, point_array)
+        plot_data = {
+            'func_1d': curve,
+            'trajectory': {
+                'x': [float(p[0]) for p in point_array],
+                'f': fx_values,
+            },
+            'fx_curve': fx_curve,
+        }
+    elif n_dim == 2 and len(points) >= 2:
         mesh = _build_mesh(f_num, point_array)
         segments = []
         for i in range(len(point_array) - 1):
@@ -124,7 +152,6 @@ def resolver_descenso_gradiente(
                 'x': [float(point_array[i, 0]), float(point_array[i + 1, 0])],
                 'y': [float(point_array[i, 1]), float(point_array[i + 1, 1])],
             })
-        fx_curve = {'iter': list(range(len(fx_values))), 'f': fx_values}
         plot_data = {
             'mesh': mesh,
             'trajectory': {
@@ -135,6 +162,8 @@ def resolver_descenso_gradiente(
             'segments': segments,
             'fx_curve': fx_curve,
         }
+    else:
+        plot_data['fx_curve'] = fx_curve
 
     resultado = {
         'method': 'gradient',

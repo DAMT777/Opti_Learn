@@ -138,6 +138,32 @@ def method_view(request, method_key: str):
     return render(request, template_name, context)
 
 
+def _build_gradient_explanation(meta: Dict[str, Any], resultado: Dict[str, Any], tol: float, max_iter: int) -> str:
+    vars_ = meta.get('variables') or []
+    vars_str = ", ".join(vars_) if vars_ else "desconocidas"
+    x0 = meta.get('x0')
+    x_star = resultado.get('x_star')
+    f_star = resultado.get('f_star')
+    iters = resultado.get('iterations') or []
+    k_final = iters[-1]['k'] if iters else 0
+
+    lines = []
+    lines.append("Procedimiento paso a paso (Gradiente Descendente):")
+    lines.append(f"- Variables: {vars_str}. Tolerancia: {tol}. Iteraciones max: {max_iter}.")
+    if x0:
+        lines.append(f"- Punto inicial: x0 = {x0}.")
+    lines.append("- 1) Calcular f(x) y su gradiente en el punto actual.")
+    lines.append("- 2) Elegir alpha_k por busqueda de linea (Armijo).")
+    lines.append("- 3) Actualizar x_{k+1} = x_k - alpha_k * grad f(x_k).")
+    lines.append("- 4) Repetir hasta que ||grad f|| < tolerancia o se alcance el maximo de iteraciones.")
+    lines.append("")
+    lines.append("Resultado:")
+    lines.append(f"- Iteraciones ejecutadas: {k_final + 1}")
+    lines.append(f"- Punto optimo estimado: x* = {x_star}")
+    lines.append(f"- Valor minimo: f(x*) = {f_star}")
+    return "\n".join(lines)
+
+
 class ParseProblemAPIView(APIView):
     def post(self, request):
         serializer = ParseRequestSerializer(data=request.data)
@@ -223,7 +249,9 @@ class ProblemViewSet(viewsets.ModelViewSet):
                 solucion.f_star = resultado['f_star']
                 solucion.iterations_count = len(resultado['iterations'])
                 solucion.status = resultado.get('status', 'ok')
-                solucion.explanation_final = recomendacion.get('rationale', '')
+                solucion.explanation_final = _build_gradient_explanation(
+                    metadatos, resultado, tolerancia, max_iteraciones
+                )
                 solucion.runtime_ms = int((time.perf_counter() - inicio) * 1000)
                 solucion.save()
                 # Guardar iteraciones
@@ -254,6 +282,9 @@ class ProblemViewSet(viewsets.ModelViewSet):
         response_data = SolutionSerializer(solucion).data
         if resultado and resultado.get('plot_data'):
             response_data['plot_data'] = resultado['plot_data']
+        # Asegurar texto plano en explanation_final (sin JSON crudo)
+        if response_data.get('explanation_final'):
+            response_data['explanation_final'] = str(response_data['explanation_final'])
         return Response(response_data)
 
 

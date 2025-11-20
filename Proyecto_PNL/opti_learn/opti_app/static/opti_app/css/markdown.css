@@ -1,0 +1,37 @@
+/* Markdown styling inside assistant bubbles */
+.msg.assistant .bubble .md{ white-space: normal; line-height: 1.35; }
+.msg.assistant .bubble .md{ hyphens:auto; word-break: normal; overflow-wrap: anywhere; }
+.msg.assistant .bubble .md h1,
+.msg.assistant .bubble .md h2,
+.msg.assistant .bubble .md h3{ margin: 10px 0 6px; font-weight: 700; }
+.msg.assistant .bubble .md h1{ font-size: 1.25rem; }
+.msg.assistant .bubble .md h2{ font-size: 1.1rem; }
+.msg.assistant .bubble .md h3{ font-size: 1rem; }
+.msg.assistant .bubble .md p{ margin: 6px 0; }
+.msg.assistant .bubble .md ul{ margin: 6px 0 6px 1.25rem; }
+.msg.assistant .bubble .md li{ margin: 3px 0; }
+.msg.assistant .bubble .md code{ background: rgba(0,0,0,.18); padding: 1px 6px; border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: .95em; }
+body.theme-light .msg.assistant .bubble .md code{ background: rgba(0,0,0,.06); }
+.msg.assistant .bubble .md pre{ background: rgba(0,0,0,.18); padding: 10px 12px; border-radius: 10px; overflow-x:auto; }
+body.theme-light .msg.assistant .bubble .md pre{ background: rgba(0,0,0,.06); }
+.msg.assistant .bubble .md blockquote{ border-left: 3px solid #3a77d8; margin: 8px 0; padding: 6px 10px; background: rgba(58,119,216,.08); border-radius: 6px; }
+body.theme-light .msg.assistant .bubble .md blockquote{ background: rgba(58,119,216,.06); }
+/* LaTeX (MathJax SVG) spacing */
+.msg.assistant .bubble .md mjx-container{ margin: 6px 0; }
+.msg.assistant .bubble .md mjx-container[jax="SVG"]{ font-size: 1.02em; line-height: 1.2; }
+/* Tables inside markdown */
+.msg.assistant .bubble .md table{ width: 100%; border-collapse: collapse; margin: 8px 0; font-size: .95em; }
+.msg.assistant .bubble .md th,
+.msg.assistant .bubble .md td{ border:1px solid rgba(0,0,0,.15); padding: 6px 8px; }
+body.theme-light .msg.assistant .bubble .md th,
+body.theme-light .msg.assistant .bubble .md td{ border-color: rgba(0,0,0,.1); }
+
+.iteration-table{ width:100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .95em; }
+.iteration-table th,
+.iteration-table td{ border:1px solid rgba(0,0,0,.15); padding:6px 8px; text-align:center; }
+.iteration-table td:nth-child(2){ text-align:left; font-family: "JetBrains Mono","Fira Mono",monospace; }
+body.theme-light .iteration-table th,
+body.theme-light .iteration-table td{ border-color: rgba(0,0,0,.1); }
+body.theme-dark .iteration-table th,
+body.theme-dark .iteration-table td{ border-color: rgba(255,255,255,.2); }
+body.theme-dark .iteration-table th{ background: rgba(255,255,255,.08); }

@@ -1,0 +1,210 @@
+.method-layout main{
+  background: transparent;
+}
+/* Habilitar scroll normal en páginas de métodos */
+body.method-page{
+  min-height: 100vh;
+  overflow: auto;
+}
+.method-hero{
+  background: linear-gradient(120deg, rgba(64,145,255,.18), rgba(123,91,255,.18));
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 20px;
+  padding: 1.4rem;
+  margin-bottom: 1.25rem;
+  color: inherit;
+  position: relative;
+  overflow: hidden;
+}
+body.theme-light .method-hero{
+  border-color: rgba(0,0,0,0.05);
+  background: linear-gradient(120deg, rgba(64,145,255,.14), rgba(123,91,255,.14));
+}
+.method-hero::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background: radial-gradient(circle at 10% 20%,rgba(255,255,255,.4),transparent 55%);
+  opacity:.45;
+  pointer-events:none;
+}
+.method-hero__badge{
+  display:inline-flex;
+  align-items:center;
+  gap:0.35rem;
+  padding:0.2rem 0.7rem;
+  border-radius:999px;
+  background: rgba(255,255,255,0.18);
+  font-size:0.8rem;
+  font-weight:600;
+}
+.method-hero__stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:1.5rem;
+  margin-top:0.8rem;
+  font-size:0.9rem;
+}
+.method-hero__stats span{
+  display:block;
+  color:rgba(255,255,255,0.8);
+  font-weight:600;
+}
+body.theme-light .method-hero__stats span{
+  color:#0a1c3a;
+}
+.method-menu{
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.method-menu__link{
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-decoration: none;
+  padding: 0.4rem 0.65rem;
+  border-radius: 10px;
+  color: inherit;
+  font-size: 0.9rem;
+  transition: background .2s ease, color .2s ease;
+}
+.method-menu__link i{
+  opacity: .8;
+}
+.method-menu__link:hover{
+  background: rgba(255,255,255,0.08);
+}
+body.theme-light .method-menu__link:hover{
+  background: rgba(0,0,0,0.05);
+}
+.method-menu__link.active{
+  background: linear-gradient(120deg,#4091ff,#7b5bff);
+  color: #fff;
+}
+.method-card{
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(8,13,45,0.9);
+  box-shadow: 0 10px 30px rgba(5,8,20,0.35);
+}
+body.theme-light .method-card{
+  border-color: rgba(0,0,0,0.05);
+  background:#fff;
+  box-shadow: 0 8px 24px rgba(12,18,40,0.12);
+}
+.method-card--errors{
+  border-left: 3px solid rgba(255,99,132,0.65);
+}
+.method-card .form-label{
+  font-weight: 600;
+}
+.method-card .form-control{
+  min-height: 44px;
+}
+.method-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
+  gap:1.25rem;
+}
+.method-tips{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:0.5rem;
+  font-size:0.9rem;
+}
+.method-tips li{
+  display:flex;
+  gap:0.5rem;
+  align-items:flex-start;
+}
+.method-tips li i{
+  color:#5ec4ff;
+  margin-top:0.2rem;
+}
+body.theme-light .method-tips li i{
+  color:#2262e8;
+}
+.method-card--result{
+  min-height:200px;
+}
+.method-card--iterations table{
+  font-size:0.9rem;
+}
+.method-card--iterations th{
+  font-weight:600;
+}
+.method-card--result hr,
+.method-card--iterations hr{
+  border-color:rgba(255,255,255,0.15);
+}
+body.theme-light .method-card--result hr,
+body.theme-light .method-card--iterations hr{
+  border-color:rgba(0,0,0,0.08);
+}
+.method-errors{
+  padding:0.4rem 0.2rem;
+  min-height:48px;
+}
+.method-errors.has-error{
+  color:#ff8c8c;
+}
+.method-result-main{
+  display:flex;
+  flex-wrap:wrap;
+  gap:1.25rem;
+}
+.metric{
+  min-width:140px;
+  padding:0.6rem 0.8rem;
+  border-radius:14px;
+  background:rgba(255,255,255,0.05);
+}
+body.theme-light .metric{
+  background:rgba(10,30,60,0.05);
+}
+.metric__label{
+  font-size:0.8rem;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.7);
+}
+body.theme-light .metric__label{
+  color:rgba(5,10,30,0.6);
+}
+.metric__value{
+  font-size:1.4rem;
+  font-weight:600;
+}
+.method-graphs{
+  display:grid;
+  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+  gap:0.75rem;
+}
+.method-graph{
+  min-height:220px;
+  border:1px dashed rgba(255,255,255,0.2);
+  border-radius:16px;
+  padding:0.5rem;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:0.9rem;
+  color:rgba(255,255,255,0.7);
+  background:rgba(255,255,255,0.02);
+}
+body.theme-light .method-graph{
+  border-color:rgba(0,0,0,0.12);
+  background:rgba(10,30,60,0.03);
+  color:rgba(0,0,0,0.65);
+}
+.method-graph canvas,
+.method-graph svg{
+  width:100%!important;
+  height:100%!important;
+}

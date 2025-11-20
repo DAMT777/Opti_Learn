@@ -297,10 +297,16 @@ function renderMethodPlots(plotData){
     return;
   }
   const theme = getPlotTheme();
-  if(nodes.contour){
+  if(plotData.func_1d && nodes.surface){
+    renderCurve1D(nodes.surface, plotData, theme);
+    if(nodes.contour){
+      nodes.contour.innerHTML = '<span>No aplica para 1 variable.</span>';
+    }
+  }
+  if(nodes.contour && plotData.mesh){
     renderContourPlot(nodes.contour, plotData, theme);
   }
-  if(nodes.surface){
+  if(nodes.surface && plotData.mesh){
     renderSurfacePlot(nodes.surface, plotData, theme);
   }
   if(nodes.fx){
@@ -398,6 +404,39 @@ function renderSurfacePlot(node, plotData, theme){
     margin: { t: 40, b: 10, l: 10, r: 10 },
   };
   Plotly.newPlot(node, [surface, trajectoryTrace], layout, {responsive:true, displayModeBar:false});
+}
+
+function renderCurve1D(node, plotData, theme){
+  const curve = plotData.func_1d;
+  if(!curve || !Array.isArray(curve.x) || !Array.isArray(curve.f)){
+    node.innerHTML = '<span>No hay datos para la función.</span>';
+    return;
+  }
+  const traj = plotData.trajectory || { x: [], f: [] };
+  const funcTrace = {
+    x: curve.x,
+    y: curve.f,
+    mode: 'lines',
+    line: { color: '#3a77d8', width: 2 },
+    name: 'f(x)',
+  };
+  const pathTrace = {
+    x: traj.x,
+    y: traj.f,
+    mode: 'markers+lines',
+    line: { color: '#ffba08', dash: 'dashdot', width: 2 },
+    marker: { color: '#ffba08', size: 8 },
+    name: 'Iteraciones',
+  };
+  const layout = {
+    title: 'Función y trayectoria (1 variable)',
+    paper_bgcolor: theme.paper,
+    plot_bgcolor: theme.plot,
+    xaxis: { title: 'x', color: theme.axis, gridcolor: theme.grid, zerolinecolor: theme.zero },
+    yaxis: { title: 'f(x)', color: theme.axis, gridcolor: theme.grid, zerolinecolor: theme.zero },
+    margin: { t: 60, b: 50, l: 60, r: 20 },
+  };
+  Plotly.newPlot(node, [funcTrace, pathTrace], layout, {responsive:true, displayModeBar:false});
 }
 
 function renderFxPlot(node, plotData, theme){

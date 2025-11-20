@@ -58,6 +58,9 @@ body.theme-dark .assistant-plot__legend-swatch{
   height: 360px;
   overflow: hidden;
 }
+.assistant-plot--surface.plot-1d{
+  height: 320px;
+}
 .assistant-plot-note{
   width: 100%;
   margin: 0.6rem 0 0;

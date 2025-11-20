@@ -138,14 +138,66 @@ def method_view(request, method_key: str):
     return render(request, template_name, context)
 
 
-def _build_gradient_explanation(meta: Dict[str, Any], resultado: Dict[str, Any], tol: float, max_iter: int) -> str:
+def _build_gradient_explanation(meta: Dict[str, Any], resultado: Dict[str, Any], tol: float, max_iter: int, x0=None) -> str:
+    """
+    Genera una explicación en tono educativo a partir del resultado del solver.
+    Intenta usar el modelo IA si está disponible; si falla, devuelve un texto local.
+    """
     vars_ = meta.get('variables') or []
     vars_str = ", ".join(vars_) if vars_ else "desconocidas"
-    x0 = meta.get('x0')
     x_star = resultado.get('x_star')
     f_star = resultado.get('f_star')
     iters = resultado.get('iterations') or []
     k_final = iters[-1]['k'] if iters else 0
+    objective = meta.get('objective_expr', '')
+
+    base_lines = []
+    base_lines.append("Explicación educativa (Gradiente Descendente)")
+    base_lines.append(f"- Problema: minimizar f({vars_str}) = {objective}")
+    base_lines.append(f"- Punto inicial: x0 = {x0 if x0 is not None else 'no especificado'}")
+    base_lines.append(f"- Criterio de paro: ||∇f|| < {tol} o k ≥ {max_iter}")
+    base_lines.append("")
+    base_lines.append("Paso a paso:")
+    base_lines.append("1) Calcular f(x) y el gradiente en el punto actual.")
+    base_lines.append("2) Elegir α_k por búsqueda de línea (Armijo).")
+    base_lines.append("3) Actualizar x_{k+1} = x_k - α_k · ∇f(x_k).")
+    base_lines.append("4) Repetir hasta cumplir el criterio de paro.")
+    base_lines.append("")
+    base_lines.append("Resultado del solver:")
+    base_lines.append(f"- Iteraciones ejecutadas: {k_final + 1}")
+    base_lines.append(f"- Punto óptimo estimado: x* ≈ {x_star}")
+    base_lines.append(f"- Valor mínimo: f(x*) ≈ {f_star}")
+    base_text = "\n".join(base_lines)
+
+    # Intentar generar una versión con el modelo IA si está disponible
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Eres un tutor amable y pedagógico. Explica en español el procedimiento del gradiente "
+                    "descendente de forma breve (6-8 viñetas máximo), enfatizando qué se calculó y por qué."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Función: f({vars_str}) = {objective}\n"
+                    f"Punto inicial: {x0}\n"
+                    f"Tolerancia: {tol}, Iteraciones máx: {max_iter}\n"
+                    f"Iteraciones ejecutadas: {k_final + 1}\n"
+                    f"Resultado: x* = {x_star}, f* = {f_star}\n"
+                    "Redacta el procedimiento pedagógico sin usar JSON, solo texto con viñetas."
+                ),
+            },
+        ]
+        ai_text = groq_service.chat_completion(messages)
+        if ai_text:
+            return ai_text
+    except Exception:
+        pass
+
+    return base_text
 
     lines = []
     lines.append("Procedimiento paso a paso (Gradiente Descendente):")
@@ -250,7 +302,7 @@ class ProblemViewSet(viewsets.ModelViewSet):
                 solucion.iterations_count = len(resultado['iterations'])
                 solucion.status = resultado.get('status', 'ok')
                 solucion.explanation_final = _build_gradient_explanation(
-                    metadatos, resultado, tolerancia, max_iteraciones
+                    metadatos, resultado, tolerancia, max_iteraciones, parametros.get('x0')
                 )
                 solucion.runtime_ms = int((time.perf_counter() - inicio) * 1000)
                 solucion.save()
@@ -283,8 +335,18 @@ class ProblemViewSet(viewsets.ModelViewSet):
         if resultado and resultado.get('plot_data'):
             response_data['plot_data'] = resultado['plot_data']
         # Asegurar texto plano en explanation_final (sin JSON crudo)
-        if response_data.get('explanation_final'):
-            response_data['explanation_final'] = str(response_data['explanation_final'])
+        expl = response_data.get('explanation_final')
+        if isinstance(expl, (dict, list)):
+            # Formatear dict/list a viñetas simples
+            if isinstance(expl, dict):
+                bullets = [f"- {k}: {v}" for k, v in expl.items()]
+            else:
+                bullets = [f"- {item}" for item in expl]
+            response_data['explanation_final'] = "\n".join(bullets)
+        elif expl is None:
+            response_data['explanation_final'] = "Interpretación no disponible."
+        else:
+            response_data['explanation_final'] = str(expl)
         return Response(response_data)
 
 

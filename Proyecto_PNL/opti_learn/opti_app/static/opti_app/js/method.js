@@ -228,9 +228,7 @@ async function solve(){
       <div><strong>Iteraciones:</strong> ${sol.iterations_count ?? '-'}</div>
       <div><strong>Tiempo:</strong> ${sol.runtime_ms ?? '-'} ms</div>
     `;
-    const interpretation = sol.explanation_final
-      ? sol.explanation_final
-      : `Después de ${sol.iterations_count ?? '-'} iteraciones se alcanzó el punto óptimo reportado.`;
+    const interpretation = renderInterpretation(sol.explanation_final, sol.iterations_count);
     setResultSections(metrics, details, interpretation);
     renderMethodIterations(sol.iterations || []);
     renderMethodPlots(sol.plot_data || null);
@@ -279,6 +277,19 @@ function getPlotTheme(){
       [1, '#0d55ce'],
     ],
   };
+}
+
+function renderInterpretation(value, iters){
+  if(!value){
+    return `Después de ${iters ?? '-'} iteraciones se alcanzó el punto óptimo reportado.`;
+  }
+  if(typeof value === 'object'){
+    if(Array.isArray(value)){
+      return value.map(v=>`• ${v}`).join('<br>');
+    }
+    return Object.entries(value).map(([k,v])=>`• ${k}: ${v}`).join('<br>');
+  }
+  return String(value);
 }
 
 function renderMethodPlots(plotData){
@@ -412,6 +423,13 @@ function renderCurve1D(node, plotData, theme){
     node.innerHTML = '<span>No hay datos para la función.</span>';
     return;
   }
+  node.innerHTML = '';
+  node.style.height = '320px';
+  node.style.minHeight = '320px';
+  node.style.width = '100%';
+  node.style.display = 'block';
+  node.style.padding = '0';
+  node.style.overflow = 'visible';
   const traj = plotData.trajectory || { x: [], f: [] };
   const funcTrace = {
     x: curve.x,
@@ -435,8 +453,10 @@ function renderCurve1D(node, plotData, theme){
     xaxis: { title: 'x', color: theme.axis, gridcolor: theme.grid, zerolinecolor: theme.zero },
     yaxis: { title: 'f(x)', color: theme.axis, gridcolor: theme.grid, zerolinecolor: theme.zero },
     margin: { t: 60, b: 50, l: 60, r: 20 },
+    height: 320,
   };
   Plotly.newPlot(node, [funcTrace, pathTrace], layout, {responsive:true, displayModeBar:false});
+  setTimeout(()=> { try{ Plotly.Plots.resize(node); }catch{} }, 60);
 }
 
 function renderFxPlot(node, plotData, theme){

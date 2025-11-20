@@ -70,6 +70,23 @@ function attachPlotForPayload(payload, bubble){
   if(!bubbleEl) return;
   if(plotData) bubbleEl.__gradientPlotData = plotData;
   bubbleEl.querySelectorAll('.assistant-plot').forEach(node => node.remove());
+  // 1D: graficar f(x) y trayectoria si existe func_1d
+  if(plotData && plotData.func_1d && window.Plotly){
+    const chart = document.createElement('div');
+    chart.className = 'assistant-plot';
+    chart.style.display = 'block';
+    chart.style.height = '320px';
+    chart.style.minHeight = '320px';
+    chart.style.width = '100%';
+    const md = bubbleEl.querySelector('.md');
+    if(md){
+      md.insertAdjacentElement('afterend', chart);
+    } else {
+      bubbleEl.appendChild(chart);
+    }
+    renderFunction1D(chart, plotData);
+    return;
+  }
   if(plotData && plotData.mesh && window.Plotly){
     renderGradientPlots(plotData, bubbleEl, { surfaceOnly: false });
     return;
@@ -162,7 +179,8 @@ function renderGradientPlots(plotData, bubbleEl, options = { surfaceOnly: false 
   };
   if(options.surfaceOnly){
     const surfaceChart = appendPlotBubble(bubbleEl, md, 'surface');
-    renderSurface(surfaceChart, plotData);
+    surfaceChart.classList.add('plot-1d');
+    renderFunction1D(surfaceChart, plotData);
     appendPlotInterpretation(surfaceChart, plotData);
     return;
   }
@@ -459,6 +477,43 @@ function insertPlotLegend(chart, items){
     legend.appendChild(node);
   });
   chart.insertAdjacentElement('afterbegin', legend);
+}
+
+function renderFunction1D(chart, plotData){
+  const theme = resolvePlotTheme();
+  const curve = plotData.func_1d;
+  chart.innerHTML = '';
+  chart.style.display = 'block';
+  chart.style.height = '320px';
+  chart.style.minHeight = '320px';
+  chart.style.width = '100%';
+  const traj = plotData.trajectory || { x: [], f: [] };
+  const funcTrace = {
+    x: curve.x,
+    y: curve.f,
+    mode: 'lines',
+    line: { color: '#3a77d8', width: 2 },
+    name: 'f(x)',
+  };
+  const pathTrace = {
+    x: traj.x,
+    y: traj.f,
+    mode: 'markers+lines',
+    line: { color: '#ffba08', dash: 'dashdot', width: 2 },
+    marker: { color: '#ffba08', size: 8 },
+    name: 'Iteraciones',
+  };
+  const layout = {
+    title: 'Función y trayectoria (1 variable)',
+    paper_bgcolor: theme.paper,
+    plot_bgcolor: theme.plot,
+    xaxis: { title: 'x', color: theme.axis, gridcolor: theme.grid, zerolinecolor: theme.zero },
+    yaxis: { title: 'f(x)', color: theme.axis, gridcolor: theme.grid, zerolinecolor: theme.zero },
+    margin: { t: 60, b: 50, l: 60, r: 20 },
+    height: 320,
+  };
+  Plotly.newPlot(chart, [funcTrace, pathTrace], layout, {responsive:true, displayModeBar:false});
+  setTimeout(()=> { try{ Plotly.Plots.resize(chart); }catch{} }, 60);
 }
 
 function addMsg(role, text){

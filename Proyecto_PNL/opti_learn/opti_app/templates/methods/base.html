@@ -7,6 +7,14 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="/static/opti_app/css/app_v2.css" rel="stylesheet">
+    <!-- Markdown + Sanitizer -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <!-- MathJax (LaTeX) -->
+    <script>
+      window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js"></script>
     <script>
       window.OPTI = { CSRF: "{{ csrf_token }}", METHOD: "{{ method_key }}" };
     </script>
@@ -94,14 +102,14 @@
                 </section>
 
                 <section class="card-soft method-card method-card--result p-3">
-                  <h6 class="mb-3">Resultado principal</h6>
-                  <div id="resultMain" class="method-result-main"></div>
+                  <h6 class="mb-3">Análisis previo</h6>
+                  <div id="resultInterpretation" class="method-result-interpretation small text-muted"></div>
                   <hr>
-                  <h6 class="mb-2">Datos intermedios</h6>
+                  <h6 class="mb-2">Procedimiento y datos intermedios</h6>
                   <div id="resultDetails" class="method-result-details small text-muted"></div>
                   <hr>
-                  <h6 class="mb-2">Interpretación</h6>
-                  <div id="resultInterpretation" class="method-result-interpretation small text-muted"></div>
+                  <h6 class="mb-2">Resultados principales</h6>
+                  <div id="resultMain" class="method-result-main"></div>
                 </section>
 
                 <section class="card-soft method-card method-card--iterations p-3">
@@ -113,6 +121,10 @@
                       </thead>
                       <tbody id="iters"></tbody>
                     </table>
+                  </div>
+                  <div class="line-search-details mt-3">
+                    <h6 class="mb-2">Busqueda de linea (alpha_k)</h6>
+                    <div id="lineSearchDetails" class="small text-muted">Sin datos de busqueda de linea.</div>
                   </div>
                 </section>
 

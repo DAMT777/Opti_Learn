@@ -17,7 +17,7 @@ from .serializers import (
     ProblemSerializer, SolutionSerializer, IterationSerializer, ParseRequestSerializer
 )
 from .core import analyzer
-from .core import solver_gradiente
+from .core import solver_gradiente, solver_cuadratico
 from .core import recommender_ai
 from .ai import groq_service
 
@@ -150,70 +150,106 @@ def _build_gradient_explanation(meta: Dict[str, Any], resultado: Dict[str, Any],
     iters = resultado.get('iterations') or []
     k_final = iters[-1]['k'] if iters else 0
     objective = meta.get('objective_expr', '')
+    alpha_series = [float(it.get('alpha')) for it in iters if isinstance(it.get('alpha'), (int, float))]
+
+    def _line_search_summary(iteraciones):
+        resumen = []
+        for it in iteraciones[:4]:
+            trace = it.get('line_search') or []
+            if not trace:
+                continue
+            accepted = trace[-1]
+            reductions = sum(1 for entry in trace if not entry.get('accepted'))
+            resumen.append({
+                'k': it.get('k'),
+                'alpha': float(accepted.get('alpha', 0.0)),
+                'reductions': reductions,
+                'reason': accepted.get('reason', 'armijo'),
+            })
+        return resumen
+
+    alpha_traces = _line_search_summary(iters)
 
     base_lines = []
-    base_lines.append("Explicación educativa (Gradiente Descendente)")
+    base_lines.append("Explicacion educativa (Gradiente Descendente)")
     base_lines.append(f"- Problema: minimizar f({vars_str}) = {objective}")
     base_lines.append(f"- Punto inicial: x0 = {x0 if x0 is not None else 'no especificado'}")
-    base_lines.append(f"- Criterio de paro: ||∇f|| < {tol} o k ≥ {max_iter}")
+    base_lines.append(f"- Criterio de paro: ||grad f|| < {tol} o k >= {max_iter}")
     base_lines.append("")
     base_lines.append("Paso a paso:")
-    base_lines.append("1) Calcular f(x) y el gradiente en el punto actual.")
-    base_lines.append("2) Elegir α_k por búsqueda de línea (Armijo).")
-    base_lines.append("3) Actualizar x_{k+1} = x_k - α_k · ∇f(x_k).")
+    base_lines.append("1) Calcular f(x_k) y el gradiente actual.")
+    base_lines.append("2) Calcular alpha_k mediante retroceso Armijo:")
+    base_lines.append("   - Iniciar alpha = 1, constante c = 1e-4 y factor rho = 0.5.")
+    base_lines.append("   - Mientras f(x_k - alpha * grad) > f(x_k) - c * alpha * ||grad||^2 se reemplaza alpha = rho * alpha.")
+    base_lines.append("   - El alpha aceptado es el ultimo que satisface la condicion de Armijo.")
+    base_lines.append("3) Actualizar x_{k+1} = x_k - alpha_k * grad f(x_k).")
     base_lines.append("4) Repetir hasta cumplir el criterio de paro.")
     base_lines.append("")
     base_lines.append("Resultado del solver:")
     base_lines.append(f"- Iteraciones ejecutadas: {k_final + 1}")
-    base_lines.append(f"- Punto óptimo estimado: x* ≈ {x_star}")
-    base_lines.append(f"- Valor mínimo: f(x*) ≈ {f_star}")
-    base_text = "\n".join(base_lines)
+    base_lines.append(f"- Punto optimo estimado: x* ~= {x_star}")
+    base_lines.append(f"- Valor minimo: f(x*) ~= {f_star}")
 
-    # Intentar generar una versión con el modelo IA si está disponible
+    def _build_line_section():
+        if alpha_traces:
+            lines = ["", "Tamano de paso calculado (retroceso Armijo):"]
+            for trace in alpha_traces:
+                status = "criterio Armijo" if trace['reason'] == 'armijo' else "alpha minimo forzado"
+                lines.append(
+                    f"- Iteracion {trace['k']}: alpha_k ~= {trace['alpha']:.5g} "
+                    f"(reducciones: {trace['reductions']}, {status})."
+                )
+            return "\n".join(lines)
+        if alpha_series:
+            values = ", ".join(f"{a:.5g}" for a in alpha_series[:6])
+            if len(alpha_series) > 6:
+                values += '...'
+            return "\n\nTamano de paso aproximado por iteracion: " + values
+        return ""
+    line_section = _build_line_section()
+    base_text = "\n".join(base_lines) + line_section
+
+    # Intentar generar una version con el modelo IA si esta disponible
     try:
+        alpha_summary_text = ""
+        if alpha_traces:
+            alpha_summary_text = "\nResumen Armijo: " + "; ".join(
+                f"k={info['k']} -> alpha~={info['alpha']:.5g} (reducciones {info['reductions']})"
+                for info in alpha_traces
+            )
+        elif alpha_series:
+            alpha_summary_text = "\nTamanos de paso aproximados: " + ", ".join(
+                f"{a:.5g}" for a in alpha_series[:6]
+            )
         messages = [
             {
                 "role": "system",
                 "content": (
-                    "Eres un tutor amable y pedagógico. Explica en español el procedimiento del gradiente "
-                    "descendente de forma breve (6-8 viñetas máximo), enfatizando qué se calculó y por qué."
+                    "Eres un tutor amable y pedagogico. Explica el gradiente descendente en 6-8 vinetas, "
+                    "incluyendo el algoritmo de retroceso Armijo: alpha inicial 1, desigualdad de Armijo y reducciones por rho=0.5. "
+                    "No digas 'se eligio'; describe el calculo paso a paso."
                 ),
             },
             {
                 "role": "user",
                 "content": (
-                    f"Función: f({vars_str}) = {objective}\n"
+                    f"Funcion: f({vars_str}) = {objective}\n"
                     f"Punto inicial: {x0}\n"
-                    f"Tolerancia: {tol}, Iteraciones máx: {max_iter}\n"
+                    f"Tolerancia: {tol}, Iteraciones max: {max_iter}\n"
                     f"Iteraciones ejecutadas: {k_final + 1}\n"
                     f"Resultado: x* = {x_star}, f* = {f_star}\n"
-                    "Redacta el procedimiento pedagógico sin usar JSON, solo texto con viñetas."
+                    "Los tamanos de paso alpha_k se obtuvieron con busqueda de linea Armijo cada iteracion."
+                    f"{alpha_summary_text}\n"
+                    "Redacta el procedimiento sin JSON, solo texto."
                 ),
             },
         ]
         ai_text = groq_service.chat_completion(messages)
         if ai_text:
-            return ai_text
+            return ai_text.strip() + line_section
     except Exception:
         pass
-
     return base_text
-
-    lines = []
-    lines.append("Procedimiento paso a paso (Gradiente Descendente):")
-    lines.append(f"- Variables: {vars_str}. Tolerancia: {tol}. Iteraciones max: {max_iter}.")
-    if x0:
-        lines.append(f"- Punto inicial: x0 = {x0}.")
-    lines.append("- 1) Calcular f(x) y su gradiente en el punto actual.")
-    lines.append("- 2) Elegir alpha_k por busqueda de linea (Armijo).")
-    lines.append("- 3) Actualizar x_{k+1} = x_k - alpha_k * grad f(x_k).")
-    lines.append("- 4) Repetir hasta que ||grad f|| < tolerancia o se alcance el maximo de iteraciones.")
-    lines.append("")
-    lines.append("Resultado:")
-    lines.append(f"- Iteraciones ejecutadas: {k_final + 1}")
-    lines.append(f"- Punto optimo estimado: x* = {x_star}")
-    lines.append(f"- Valor minimo: f(x*) = {f_star}")
-    return "\n".join(lines)
 
 
 class ParseProblemAPIView(APIView):
@@ -313,9 +349,23 @@ class ProblemViewSet(viewsets.ModelViewSet):
                         solution=solucion,
                         k=it['k'], x_k=it['x_k'], f_k=it.get('f_k'),
                         grad_norm=it.get('grad_norm'), step=it.get('step'),
+                        line_search=it.get('line_search', []),
                         notes=it.get('notes', '')
                     ))
                 Iteration.objects.bulk_create(iteraciones_obj)
+            elif metodo == 'qp':
+                resultado = solver_cuadratico.solve_qp(
+                    objective_expr=problema.objective_expr,
+                    variables=metadatos['variables'],
+                    constraints=problema.constraints_raw,
+                )
+                solucion.x_star = resultado.get('x_star')
+                solucion.f_star = resultado.get('f_star')
+                solucion.iterations_count = len(resultado.get('iterations', []))
+                solucion.status = resultado.get('status', 'educational_only')
+                solucion.explanation_final = resultado.get('explanation', resultado.get('message', ''))
+                solucion.runtime_ms = int((time.perf_counter() - inicio) * 1000)
+                solucion.save()
             else:
                 solucion.status = 'not_implemented'
                 solucion.explanation_final = (

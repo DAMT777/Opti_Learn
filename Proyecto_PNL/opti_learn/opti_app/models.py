@@ -77,6 +77,7 @@ class Iteration(models.Model):
     f_k = models.FloatField(null=True, blank=True)
     grad_norm = models.FloatField(null=True, blank=True)
     step = models.FloatField(null=True, blank=True)
+    line_search = models.JSONField(default=list, blank=True)
     notes = models.TextField(blank=True)
 
     class Meta:
@@ -103,4 +104,3 @@ class ChatMessage(models.Model):
     content = models.TextField()
     payload = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-

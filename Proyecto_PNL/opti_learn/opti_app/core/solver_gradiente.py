@@ -77,32 +77,66 @@ def resolver_descenso_gradiente(
     iteraciones: List[Dict[str, Any]] = []
     c_armijo = 1e-4
     factor_reduccion = 0.5
+    alpha_min = 1e-12
     f_k = valor_funcion(x_vec)
     for k in range(max_iteraciones):
         grad_k = valor_gradiente(x_vec)
         norma_grad = float(np.linalg.norm(grad_k))
         if norma_grad < tolerancia:
-            iteraciones.append({'k': k, 'x_k': x_vec.tolist(), 'f_k': f_k, 'grad_norm': norma_grad, 'step': 0.0, 'notes': 'Convergencia por gradiente'})
+            iteraciones.append({
+                'k': k,
+                'x_k': x_vec.tolist(),
+                'f_k': f_k,
+                'grad_norm': norma_grad,
+                'step': 0.0,
+                'alpha': 0.0,
+                'grad': grad_k.tolist(),
+                'line_search': [],
+                'notes': 'Convergencia por gradiente',
+            })
             break
 
+        line_search_trace: List[Dict[str, Any]] = []
         alpha = 1.0
-        while True:
-            x_nuevo = x_vec - alpha * grad_k
-            f_nuevo = valor_funcion(x_nuevo)
-            if f_nuevo <= f_k - c_armijo * alpha * norma_grad * norma_grad:
+        accepted = False
+        x_nuevo = x_vec
+        f_nuevo = f_k
+        while alpha >= alpha_min:
+            x_candidato = x_vec - alpha * grad_k
+            f_candidato = valor_funcion(x_candidato)
+            armijo_rhs = f_k - c_armijo * alpha * norma_grad * norma_grad
+            satisface_armijo = f_candidato <= armijo_rhs
+            trace_entry = {
+                'alpha': float(alpha),
+                'f_value': float(f_candidato),
+                'threshold': float(armijo_rhs),
+                'accepted': bool(satisface_armijo),
+                'reason': 'armijo' if satisface_armijo else 'reduce',
+            }
+            line_search_trace.append(trace_entry)
+            if satisface_armijo:
+                accepted = True
+                x_nuevo = x_candidato
+                f_nuevo = f_candidato
                 break
             alpha *= factor_reduccion
-            if alpha < 1e-12:
-                break
+        if not accepted:
+            # Forzar aceptación con el último candidato evaluado
+            ultimo = line_search_trace[-1]
+            ultimo['accepted'] = True
+            ultimo['reason'] = 'min_alpha'
+            x_nuevo = x_vec - float(ultimo['alpha']) * grad_k
+            f_nuevo = ultimo['f_value']
 
         iteraciones.append({
             'k': k,
             'x_k': x_vec.tolist(),
             'f_k': f_k,
             'grad_norm': norma_grad,
-            'step': float(alpha),
-            'alpha': float(alpha),
-            'grad': valor_gradiente(x_vec).tolist(),
+            'step': float(line_search_trace[-1]['alpha']),
+            'alpha': float(line_search_trace[-1]['alpha']),
+            'grad': grad_k.tolist(),
+            'line_search': line_search_trace,
         })
         x_vec = x_nuevo
         f_k = f_nuevo
@@ -117,6 +151,7 @@ def resolver_descenso_gradiente(
                 'step': 0.0,
                 'alpha': 0.0,
                 'grad': grad_fin.tolist(),
+                'line_search': [],
                 'notes': 'Convergencia por cambio relativo',
             })
             break
@@ -144,8 +179,8 @@ def resolver_descenso_gradiente(
             },
             'fx_curve': fx_curve,
         }
-    elif n_dim == 2 and len(points) >= 2:
-        mesh = _build_mesh(f_num, point_array)
+    elif n_dim == 2 and len(points) >= 1:
+        mesh = _build_mesh(f_num, point_array if len(points) >= 2 else np.vstack([point_array, point_array]))
         segments = []
         for i in range(len(point_array) - 1):
             segments.append({

@@ -187,6 +187,14 @@ def _clean_expr(expr: str) -> str:
     return expr.strip().rstrip(';, .')
 
 
+def _strip_to_math(expr: str) -> str:
+    expr = expr.strip()
+    for idx, ch in enumerate(expr):
+        if ch.isalnum() or ch in "+-(":
+            return expr[idx:].strip()
+    return expr
+
+
 def _parse_numeric_list(snippet: str) -> List[float] | None:
     snippet = snippet.strip()
     try:
@@ -240,6 +248,7 @@ def parse_payload_from_text(message: str) -> Dict[str, Any] | None:
         return None
 
     expr = None
+    inferred_vars = None
     expr_patterns = [
         r'(?:func(?:ión|ion|objective|objetivo)[^:]*:\s*)(?P<expr>"[^"]+"|\'[^\']+\'|`[^`]+`|[^\n,;]+)',
         r'f\s*\([^\)]*\)\s*=\s*(?P<expr>[^\n,;]+)',
@@ -247,9 +256,25 @@ def parse_payload_from_text(message: str) -> Dict[str, Any] | None:
     for pattern in expr_patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
-            expr = _clean_expr(match.group('expr'))
+            expr = _strip_to_math(_clean_expr(match.group('expr')))
             if expr:
                 break
+    if not expr:
+        try:
+            m = re.search(r'(?P<expr>.+?)\s*x0\s*[:=]', text, re.IGNORECASE)
+            if m:
+                expr_guess = _strip_to_math(_clean_expr(m.group('expr')))
+                if expr_guess:
+                    expr = expr_guess
+                    try:
+                        sym = sp.sympify(expr_guess, locals=analyzer.FUNCIONES_PERMITIDAS)
+                        vars_auto = sorted([str(s) for s in sym.free_symbols])
+                        if vars_auto:
+                            inferred_vars = vars_auto
+                    except Exception:
+                        pass
+        except Exception:
+            pass
     if not expr:
         return None
 
@@ -257,6 +282,8 @@ def parse_payload_from_text(message: str) -> Dict[str, Any] | None:
         'objective_expr': expr,
         'constraints': [],
     }
+    if inferred_vars:
+        payload['variables'] = inferred_vars
     var_match = re.search(r'variables?\s*[:=]\s*(\[[^\]]+\]|[a-zA-Z_,\s]+)', text, re.IGNORECASE)
     if var_match:
         vars_list = _parse_variables(var_match.group(1))
@@ -284,7 +311,79 @@ def parse_payload_from_text(message: str) -> Dict[str, Any] | None:
             pass
 
     payload['method'] = detected_method or 'gradient'
+    # Fallback: intentar extraer x0 si no se obtuvo
+    if 'x0' not in payload or payload.get('x0') is None:
+        m = re.search(r'x[_\s]?0\s*[:=]\s*(\[[^\]]+\]|\([^\)]+\)|\{[^\}]+\})', text, re.IGNORECASE)
+        if m:
+            x0_values = _parse_numeric_list(m.group(1))
+            if x0_values is not None:
+                payload['x0'] = x0_values
+
     return payload
+
+
+def _format_bullets(data: Any) -> str:
+    if data is None:
+        return ''
+    if isinstance(data, dict):
+        return "\n".join([f"- {k}: {v}" for k, v in data.items()])
+    if isinstance(data, list):
+        return "\n".join([f"- {item}" for item in data])
+    return str(data)
+
+
+def _extract_payload_with_ai(text: str) -> Dict[str, Any] | None:
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Extrae un JSON con campos: objective_expr (SymPy), variables (lista), "
+                    "constraints (lista opcional), x0 (lista opcional), tol (float), "
+                    "max_iter (int), derivative_only (bool opcional). Responde solo JSON."
+                ),
+            },
+            {"role": "user", "content": text},
+        ]
+        raw = groq_service.chat_completion(messages)
+        return json.loads(raw) if raw else None
+    except Exception:
+        return None
+
+
+def _narrate_with_ai(payload: Dict[str, Any], meta: Dict[str, Any], resultado: Dict[str, Any], recom: Dict[str, Any]) -> str | None:
+    try:
+        variables = meta.get('variables') or []
+        restrictions = meta.get('constraints_normalized') or []
+        iter_count = len(resultado.get('iterations', []))
+        solver_method = resultado.get('method') or recom.get('method')
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Eres un tutor amable. Explica en español, en 6-10 viñetas, el procedimiento seguido "
+                    "para resolver el problema de optimización. Incluye función, restricciones, método, "
+                    "paso a paso y resultado. No uses JSON."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Función objetivo: {payload.get('objective_expr')}\n"
+                    f"Variables: {variables}\n"
+                    f"Restricciones: {restrictions}\n"
+                    f"Método usado: {solver_method}\n"
+                    f"Punto inicial x0: {payload.get('x0')}\n"
+                    f"Tolerancia: {payload.get('tol', 1e-6)}, iteraciones máx: {payload.get('max_iter', 200)}\n"
+                    f"Iteraciones ejecutadas: {iter_count}\n"
+                    f"x* = {resultado.get('x_star')}, f* = {resultado.get('f_star')}\n"
+                    "Redacta viñetas didácticas (procedimiento y resultado)."
+                ),
+            },
+        ]
+        return groq_service.chat_completion(messages)
+    except Exception:
+        return None
 
 
 def solve_gradient_payload(payload: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
@@ -341,7 +440,23 @@ def solve_gradient_payload(payload: Dict[str, Any]) -> tuple[str, Dict[str, Any]
     }
     pre_analysis = build_pre_solution_analysis(problema, meta, recomendacion, parametros, symbolic)
     report = build_gradient_report(problema, meta, resultado, recomendacion, parametros, symbolic)
-    combined = f"{pre_analysis}\n\n---\n\n{report}"
+
+    ai_narrative = _narrate_with_ai(payload, meta, resultado, recomendacion)
+    # Si la IA devuelve JSON u objeto vacío, descartar y usar fallback.
+    if ai_narrative and not ai_narrative.strip().startswith(("{", "[")):
+        combined = f"{ai_narrative}\n\n---\n\n{pre_analysis}\n\n---\n\n{report}"
+    else:
+        traj = resultado.get('iterations', [])
+        resumen = [
+            "### Síntesis educativa",
+            f"- Método: {resultado.get('method', 'gradiente')}",
+            f"- Restricciones: eq={meta.get('has_equalities')} | ineq={meta.get('has_inequalities')}",
+            f"- Iteraciones ejecutadas: {len(traj)}",
+            f"- x* ≈ {resultado.get('x_star')}",
+            f"- f(x*) ≈ {resultado.get('f_star')}",
+            "- Recordatorio formal: en cada iteracion se parte de x_k, se calcula grad f(x_k) y se aplica retroceso Armijo (alpha inicial 1, c=1e-4, alpha=0.5*alpha mientras falle la desigualdad). Con el alpha aceptado se actualiza x_{k+1} = x_k - alpha_k * grad f(x_k) hasta que ||grad f|| es pequena.",
+        ]
+        combined = f"{pre_analysis}\n\n---\n\n{report}\n\n" + "\n".join(resumen)
     return combined, reply_payload
 
 
@@ -372,14 +487,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.save_message('user', text)
 
             structured_payload: Dict[str, Any] | None = None
+            # Intentar JSON directo
             try:
                 candidate = json.loads(text)
                 if isinstance(candidate, dict) and 'objective_expr' in candidate:
                     structured_payload = candidate
             except Exception:
                 structured_payload = None
+            # Intentar parseo heurístico
             if not structured_payload:
                 structured_payload = parse_payload_from_text(text)
+            # Intentar extracción con IA
+            if not structured_payload:
+                structured_payload = _extract_payload_with_ai(text)
 
             if structured_payload:
                 try:
@@ -387,7 +507,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 except Exception as exc:
                     assistant_text = (
                         "No se pudo resolver el problema con el solver local. "
-                        f"Detalle: {exc}"
+                        f"Detalle: {exc}\n\n"
+                        "Sugerencia: verifica dimensiones de x0 y variables, y usa funciones soportadas (sin/sin(), cos/cos())."
                     )
                     reply_payload = {'error': str(exc)}
                 reply = {'type': 'assistant_message', 'text': assistant_text, 'payload': reply_payload}

@@ -208,3 +208,32 @@ body.theme-light .method-graph{
   width:100%!important;
   height:100%!important;
 }
+
+.line-search-details{
+  border-top:1px solid rgba(255,255,255,0.12);
+  padding-top:0.75rem;
+}
+body.theme-light .line-search-details{
+  border-color:rgba(0,0,0,0.08);
+}
+.line-search-block{
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px;
+  padding:0.6rem 0.75rem;
+  margin-bottom:0.5rem;
+}
+body.theme-light .line-search-block{
+  background:rgba(10,30,60,0.02);
+  border-color:rgba(0,0,0,0.08);
+}
+.line-search-block__list{
+  margin:0;
+  padding-left:1.2rem;
+}
+.line-search-block__list li{
+  margin-bottom:0.35rem;
+}
+.line-search-block code{
+  font-size:0.85rem;
+}

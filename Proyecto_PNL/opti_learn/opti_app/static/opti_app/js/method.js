@@ -6,6 +6,7 @@ const sections = {
   resultInterpretation: el('#resultInterpretation'),
   errors: el('#methodErrors'),
   iterations: el('#iters'),
+  lineSearch: el('#lineSearchDetails'),
   plots: {
     contour: el('#plotContour'),
     surface: el('#plotSurface'),
@@ -13,6 +14,30 @@ const sections = {
   },
 };
 let lastPlotData = null;
+
+function renderMarkdownToHTML(text){
+  try{
+    if(window.marked){
+      const raw = window.marked.parse(String(text || ''), { breaks: true });
+      if(window.DOMPurify){
+        return window.DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+      }
+      return raw;
+    }
+  }catch{}
+  return String(text || '').replace(/</g,'&lt;');
+}
+
+function formatNumber(value){
+  if(typeof value !== 'number' || Number.isNaN(value)){
+    return '-';
+  }
+  const abs = Math.abs(value);
+  if(abs >= 1e4 || (abs > 0 && abs < 1e-3)){
+    return value.toExponential(3);
+  }
+  return value.toFixed(6);
+}
 
 function initTheme(){
   const saved = localStorage.getItem('theme')||'dark';
@@ -109,12 +134,23 @@ function showMethodError(message){
 function setResultSections(mainHtml, detailsHtml, interpretationHtml){
   if(sections.resultMain) sections.resultMain.innerHTML = mainHtml || '<div class="text-muted">Sin resultados.</div>';
   if(sections.resultDetails) sections.resultDetails.innerHTML = detailsHtml || '';
-  if(sections.resultInterpretation) sections.resultInterpretation.innerHTML = interpretationHtml || '';
+  if(sections.resultInterpretation){
+    const hasContent = Boolean(interpretationHtml);
+    sections.resultInterpretation.innerHTML = hasContent
+      ? renderMarkdownToHTML(interpretationHtml)
+      : '<div class="text-muted">Sin interpretacion.</div>';
+    try{
+      if(window.MathJax && window.MathJax.typesetPromise){
+        window.MathJax.typesetPromise([sections.resultInterpretation]);
+      }
+    }catch{}
+  }
 }
 
 function resetOutputs(){
   setResultSections('', '', '');
   if(sections.iterations) sections.iterations.innerHTML = '';
+  if(sections.lineSearch) sections.lineSearch.innerHTML = 'Sin datos de busqueda de linea.';
   renderMethodPlots(null);
   showMethodError('');
 }
@@ -244,10 +280,12 @@ function renderMethodIterations(items){
   const rows = Array.isArray(items) ? items : [];
   rows.forEach(it=>{
     const tr=document.createElement('tr');
-    const fmt = (val)=> typeof val === 'number' ? val.toFixed(6) : (val ?? '');
-    tr.innerHTML = `<td>${it.k ?? ''}</td><td>${fmt(it.f_k)}</td><td>${fmt(it.grad_norm)}</td><td>${fmt(it.step ?? it.alpha)}</td>`;
+    const fmt = (val)=> typeof val === 'number' ? formatNumber(val) : (val ?? '');
+    const alphaVal = (typeof it.step === 'number' && !Number.isNaN(it.step)) ? formatNumber(it.step) : (typeof it.alpha === 'number' ? formatNumber(it.alpha) : (it.alpha ?? ''));
+    tr.innerHTML = `<td>${it.k ?? ''}</td><td>${fmt(it.f_k)}</td><td>${fmt(it.grad_norm)}</td><td>${alphaVal}</td>`;
     sections.iterations.appendChild(tr);
   });
+  renderLineSearchDetails(rows);
 }
 
 function getPlotTheme(){
@@ -281,16 +319,17 @@ function getPlotTheme(){
 
 function renderInterpretation(value, iters){
   if(!value){
-    return `Después de ${iters ?? '-'} iteraciones se alcanzó el punto óptimo reportado.`;
+    return `Despues de ${iters ?? '-'} iteraciones se alcanzo el punto optimo reportado.`;
   }
   if(typeof value === 'object'){
     if(Array.isArray(value)){
-      return value.map(v=>`• ${v}`).join('<br>');
+      return value.map(v=>`- ${v}`).join('\n');
     }
-    return Object.entries(value).map(([k,v])=>`• ${k}: ${v}`).join('<br>');
+    return Object.entries(value).map(([k,v])=>`- ${k}: ${v}`).join('\n');
   }
   return String(value);
 }
+
 
 function renderMethodPlots(plotData){
   lastPlotData = plotData || null;
@@ -323,6 +362,41 @@ function renderMethodPlots(plotData){
   if(nodes.fx){
     renderFxPlot(nodes.fx, plotData, theme);
   }
+}
+
+function renderLineSearchDetails(rows){
+  if(!sections.lineSearch) return;
+  const traces = (rows || []).filter(it => Array.isArray(it.line_search) && it.line_search.length);
+  if(!traces.length){
+    sections.lineSearch.innerHTML = '<div class="text-muted">Sin datos de busqueda de linea.</div>';
+    return;
+  }
+  const html = traces.slice(0, 4).map(it=>{
+    const steps = it.line_search.map(step=>{
+      const badge = step.accepted
+        ? '<span class="badge bg-success ms-2">Aceptado</span>'
+        : '<span class="badge bg-warning text-dark ms-2">Reducir</span>';
+      const reason = step.reason === 'min_alpha'
+        ? '<small class="text-muted ms-1">alpha minimo</small>'
+        : '';
+      const reasonTag = reason ? ` ${reason}` : '';
+      return `<li><code>&alpha;=${formatNumber(step.alpha)}</code> &rarr; f=${formatNumber(step.f_value)} <small class="text-muted">(umbral ${formatNumber(step.threshold)})</small>${badge}${reasonTag}</li>`;
+    }).join('');
+    return `
+      <div class="line-search-block">
+        <div class="fw-semibold mb-1">Iteracion ${it.k}</div>
+        <ol class="line-search-block__list">
+          ${steps}
+        </ol>
+      </div>
+    `;
+  }).join('');
+  sections.lineSearch.innerHTML = html;
+  try{
+    if(window.MathJax && window.MathJax.typesetPromise){
+      window.MathJax.typesetPromise([sections.lineSearch]);
+    }
+  }catch{}
 }
 
 function renderContourPlot(node, plotData, theme){

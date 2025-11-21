@@ -24,7 +24,7 @@ class ProblemSerializer(serializers.ModelSerializer):
 class IterationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Iteration
-        fields = ['id', 'k', 'x_k', 'f_k', 'grad_norm', 'step', 'notes']
+        fields = ['id', 'k', 'x_k', 'f_k', 'grad_norm', 'step', 'line_search', 'notes']
 
 
 class SolutionSerializer(serializers.ModelSerializer):
@@ -58,4 +58,3 @@ class ParseRequestSerializer(serializers.Serializer):
     constraints = serializers.ListField(child=serializers.DictField(), required=False)
     title = serializers.CharField(required=False)
     description = serializers.CharField(required=False, allow_blank=True)
-

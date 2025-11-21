@@ -4,28 +4,44 @@ from typing import Dict, Any
 
 
 def recomendar_metodo(metadatos: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Selección de método según la guía:
+    - Objetivo cuadrático + restricciones lineales -> QP
+    - Solo igualdades -> Lagrange
+    - Desigualdades (con o sin igualdades) -> KKT
+    - Sin restricciones -> Gradiente
+    - Si el usuario solo pide derivar/analizar -> Cálculo diferencial
+    """
     hay_igualdades = bool(metadatos.get('has_equalities'))
     hay_desigualdades = bool(metadatos.get('has_inequalities'))
     es_cuadratico = bool(metadatos.get('is_quadratic'))
+    derivative_only = bool(metadatos.get('derivative_only'))
 
-    if not hay_igualdades and not hay_desigualdades:
-        metodo = 'gradient'
-        justificacion = 'Problema sin restricciones: aplicar gradiente descendente (o análisis diferencial).'
-    elif hay_igualdades and not hay_desigualdades:
-        metodo = 'lagrange'
-        justificacion = 'Restricciones de igualdad detectadas: aplicar método de Lagrange.'
-    elif hay_desigualdades:
-        if es_cuadratico:
-            metodo = 'qp'
-            justificacion = 'Estructura cuadrática con desigualdades: formular y resolver QP.'
-        else:
-            metodo = 'kkt'
-            justificacion = 'Desigualdades generales: aplicar condiciones KKT.'
-    else:
-        metodo = 'gradient'
-        justificacion = 'Heurística por defecto: gradiente.'
+    if derivative_only:
+        return {
+            'method': 'differential',
+            'rationale': 'Solo requiere derivadas/gradiente/Hessiano: aplicar cálculo diferencial.',
+        }
 
-    return {'method': metodo, 'rationale': justificacion}
+    if es_cuadratico and (hay_igualdades or hay_desigualdades):
+        return {
+            'method': 'qp',
+            'rationale': 'Función objetivo cuadrática con restricciones (asumidas lineales): usar Programación Cuadrática (QP).',
+        }
+    if hay_desigualdades:
+        return {
+            'method': 'kkt',
+            'rationale': 'Hay restricciones de desigualdad (y posibles igualdades): aplicar condiciones KKT.',
+        }
+    if hay_igualdades:
+        return {
+            'method': 'lagrange',
+            'rationale': 'Solo restricciones de igualdad: método de Lagrange.',
+        }
+    return {
+        'method': 'gradient',
+        'rationale': 'Problema sin restricciones: gradiente/descenso por gradiente.',
+    }
 
 
 # Alias de compatibilidad

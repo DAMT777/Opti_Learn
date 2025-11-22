@@ -1,7 +1,7 @@
-from django.urls import path
+from django.urls import re_path
 from .consumers_ai import ChatConsumer
 
-
+# Ruta WebSocket: /ws/chat/<uuid>/
 websocket_urlpatterns = [
-    path('ws/chat/<uuid:session_id>/', ChatConsumer.as_asgi()),
+    re_path(r'^ws/chat/(?P<session_id>[0-9a-fA-F-]+)/$', ChatConsumer.as_asgi()),
 ]

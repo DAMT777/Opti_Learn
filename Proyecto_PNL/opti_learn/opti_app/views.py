@@ -17,6 +17,7 @@ from .serializers import (
     ProblemSerializer, SolutionSerializer, IterationSerializer, ParseRequestSerializer
 )
 from .core import analyzer
+from .core import scope_guard
 from .core import solver_gradiente, solver_cuadratico
 from .core import recommender_ai
 from .ai import groq_service
@@ -45,6 +46,8 @@ def ai_chat(request):
     session_id = (request.data or {}).get('session_id')
     if not text:
         return Response({'detail': 'Texto vacío.'}, status=400)
+    if not scope_guard.is_message_allowed(text):
+        return Response({'type': 'assistant_message', 'text': scope_guard.scope_violation_reply()})
 
     # Construir historial básico si la BD está disponible
     history = []

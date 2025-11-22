@@ -343,6 +343,13 @@ function renderMethodPlots(plotData){
     if(!node) return;
     node.innerHTML = `<span>${placeholders[key]}</span>`;
   });
+  if(plotData && plotData.allow_plots === false){
+    const msg = plotData.message || 'Las visualizaciones solo están disponibles para funciones con 1 o 2 variables.';
+    Object.values(nodes).forEach(node=>{
+      if(node) node.innerHTML = `<span>${msg}</span>`;
+    });
+    return;
+  }
   if(!plotData || !window.Plotly){
     return;
   }
@@ -575,5 +582,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(resetBtn) resetBtn.addEventListener('click', resetForm);
   document.querySelectorAll('.form-control').forEach(inp=>{
     inp.addEventListener('focus', ()=> inp.scrollIntoView({block:'center', behavior:'smooth'}));
+  });
+  document.querySelectorAll('[data-example]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const expr = btn.getAttribute('data-example');
+      const vars = btn.getAttribute('data-vars');
+      const objective = el('#objective');
+      const variables = el('#variables');
+      if(objective && expr){
+        objective.value = expr;
+        objective.focus();
+      }
+      if(variables && vars){
+        variables.value = vars;
+      }
+    });
   });
 });

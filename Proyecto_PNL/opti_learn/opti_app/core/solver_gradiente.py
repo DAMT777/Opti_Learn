@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, List, Any, Optional
+import math
 import numpy as np
 
 from .analyzer import build_sympy_functions, construir_funciones_numericas_sympy
@@ -57,6 +58,75 @@ def _build_curve_1d(f_num, puntos: np.ndarray, resolution: int = 200):
     return {'x': x_lin.tolist(), 'f': y_vals}
 
 
+def _argmin_step_along_gradient(valor_funcion, x_vec, grad_vec, alpha_ini=1.0, tol=1e-6):
+    """
+    Aproxima alpha_k = argmin_{alpha>0} f(x_k - alpha * grad f(x_k))
+    usando b�squeda dorada sobre una direcci�n de descenso.
+    """
+    norma = float(np.linalg.norm(grad_vec))
+    if norma < 1e-12:
+        fk = valor_funcion(x_vec)
+        return 0.0, fk, [{'alpha': 0.0, 'f_value': fk, 'reason': 'zero_gradient', 'accepted': True}]
+
+    def phi(alpha: float) -> float:
+        if alpha <= 0:
+            return valor_funcion(x_vec)
+        return valor_funcion(x_vec - alpha * grad_vec)
+
+    phi0 = phi(0.0)
+    alpha_right = alpha_ini
+    phi_right = phi(alpha_right)
+    shrink_steps = 0
+    while phi_right >= phi0 and alpha_right > 1e-12 and shrink_steps < 20:
+        alpha_right *= 0.5
+        phi_right = phi(alpha_right)
+        shrink_steps += 1
+
+    if phi_right >= phi0:
+        return 0.0, phi0, [{'alpha': 0.0, 'f_value': phi0, 'reason': 'no_descent', 'accepted': True}]
+
+    alpha_high = alpha_right * 2.0
+    phi_high = phi(alpha_high)
+    expand_steps = 0
+    while phi_high < phi_right and alpha_high < 50.0 and expand_steps < 20:
+        alpha_right = alpha_high
+        phi_right = phi_high
+        alpha_high *= 2.0
+        phi_high = phi(alpha_high)
+        expand_steps += 1
+
+    left = 0.0
+    right = min(alpha_high, 50.0)
+    golden = (math.sqrt(5) - 1.0) / 2.0
+    c = right - golden * (right - left)
+    d = left + golden * (right - left)
+    fc = phi(c)
+    fd = phi(d)
+    trace: List[Dict[str, Any]] = []
+    for _ in range(60):
+        if abs(right - left) < tol:
+            break
+        if fc < fd:
+            right = d
+            d = c
+            fd = fc
+            c = right - golden * (right - left)
+            fc = phi(c)
+        else:
+            left = c
+            c = d
+            fc = fd
+            d = left + golden * (right - left)
+            fd = phi(d)
+        mid = (left + right) / 2.0
+        trace.append({'alpha': float(mid), 'f_value': float(phi(mid)), 'accepted': False})
+
+    alpha_opt = (left + right) / 2.0
+    f_opt = phi(alpha_opt)
+    trace.append({'alpha': float(alpha_opt), 'f_value': float(f_opt), 'reason': 'argmin', 'accepted': True})
+    return float(alpha_opt), float(f_opt), trace
+
+
 def resolver_descenso_gradiente(
     expresion_objetivo: str,
     nombres_variables: List[str],
@@ -75,9 +145,6 @@ def resolver_descenso_gradiente(
         return np.array(grad_num(xv), dtype=float).reshape(n_dim)
 
     iteraciones: List[Dict[str, Any]] = []
-    c_armijo = 1e-4
-    factor_reduccion = 0.5
-    alpha_min = 1e-12
     f_k = valor_funcion(x_vec)
     for k in range(max_iteraciones):
         grad_k = valor_gradiente(x_vec)
@@ -96,45 +163,18 @@ def resolver_descenso_gradiente(
             })
             break
 
-        line_search_trace: List[Dict[str, Any]] = []
-        alpha = 1.0
-        accepted = False
-        x_nuevo = x_vec
-        f_nuevo = f_k
-        while alpha >= alpha_min:
-            x_candidato = x_vec - alpha * grad_k
-            f_candidato = valor_funcion(x_candidato)
-            armijo_rhs = f_k - c_armijo * alpha * norma_grad * norma_grad
-            satisface_armijo = f_candidato <= armijo_rhs
-            trace_entry = {
-                'alpha': float(alpha),
-                'f_value': float(f_candidato),
-                'threshold': float(armijo_rhs),
-                'accepted': bool(satisface_armijo),
-                'reason': 'armijo' if satisface_armijo else 'reduce',
-            }
-            line_search_trace.append(trace_entry)
-            if satisface_armijo:
-                accepted = True
-                x_nuevo = x_candidato
-                f_nuevo = f_candidato
-                break
-            alpha *= factor_reduccion
-        if not accepted:
-            # Forzar aceptación con el último candidato evaluado
-            ultimo = line_search_trace[-1]
-            ultimo['accepted'] = True
-            ultimo['reason'] = 'min_alpha'
-            x_nuevo = x_vec - float(ultimo['alpha']) * grad_k
-            f_nuevo = ultimo['f_value']
+        alpha_opt, f_nuevo, line_search_trace = _argmin_step_along_gradient(
+            valor_funcion, x_vec, grad_k, alpha_ini=1.0, tol=tolerancia
+        )
+        x_nuevo = x_vec - alpha_opt * grad_k
 
         iteraciones.append({
             'k': k,
             'x_k': x_vec.tolist(),
             'f_k': f_k,
             'grad_norm': norma_grad,
-            'step': float(line_search_trace[-1]['alpha']),
-            'alpha': float(line_search_trace[-1]['alpha']),
+            'step': float(alpha_opt),
+            'alpha': float(alpha_opt),
             'grad': grad_k.tolist(),
             'line_search': line_search_trace,
         })
@@ -166,12 +206,14 @@ def resolver_descenso_gradiente(
             trajectory.append({'x': float(xk[0]), 'y': float(xk[1]) if n_dim > 1 else float(xk[0]), 'f': float(it.get('f_k', 0.0))})
             fx_values.append(float(it.get('f_k', 0.0)))
 
-    plot_data: Dict[str, Any] = {}
+    plot_data: Dict[str, Any] = {'dimension': n_dim, 'allow_plots': n_dim <= 2}
     point_array = np.stack(points) if points else np.empty((0, n_dim))
     fx_curve = {'iter': list(range(len(fx_values))), 'f': fx_values}
     if n_dim == 1 and point_array.size > 0:
         curve = _build_curve_1d(f_num, point_array)
         plot_data = {
+            'dimension': n_dim,
+            'allow_plots': True,
             'func_1d': curve,
             'trajectory': {
                 'x': [float(p[0]) for p in point_array],
@@ -188,6 +230,8 @@ def resolver_descenso_gradiente(
                 'y': [float(point_array[i, 1]), float(point_array[i + 1, 1])],
             })
         plot_data = {
+            'dimension': n_dim,
+            'allow_plots': True,
             'mesh': mesh,
             'trajectory': {
                 'x': [float(p[0]) for p in point_array],
@@ -198,7 +242,7 @@ def resolver_descenso_gradiente(
             'fx_curve': fx_curve,
         }
     else:
-        plot_data['fx_curve'] = fx_curve
+        plot_data['reason'] = 'high_dimension'
 
     resultado = {
         'method': 'gradient',

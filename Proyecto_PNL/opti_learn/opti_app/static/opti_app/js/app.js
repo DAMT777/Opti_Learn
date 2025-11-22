@@ -68,6 +68,10 @@ function attachPlotForPayload(payload, bubble){
   const plotData = payload.plot.plot_data;
   const bubbleEl = bubble.closest('.bubble') || bubble;
   if(!bubbleEl) return;
+  if(plotData && plotData.allow_plots === false){
+    bubbleEl.querySelectorAll('.assistant-plot').forEach(node => node.remove());
+    return;
+  }
   if(plotData) bubbleEl.__gradientPlotData = plotData;
   bubbleEl.querySelectorAll('.assistant-plot').forEach(node => node.remove());
   // 1D: graficar f(x) y trayectoria si existe func_1d

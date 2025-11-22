@@ -1,17 +1,26 @@
 import json
 import asyncio
-import ast
-import re
+import logging
 from typing import Any, Dict, List
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
 from .models import ChatSession, ChatMessage
-from .core import analyzer, recommender_ai, solver_gradiente
+from .core import (
+    analyzer,
+    message_parser,
+    recommender_ai,
+    scope_guard,
+    solver_cuadratico,
+    solver_gradiente,
+    solver_kkt,
+    solver_lagrange,
+)
 from .ai import groq_service
 import sympy as sp
 
+logger = logging.getLogger(__name__)
 
 def _fmt_number(value: Any) -> str:
     try:
@@ -164,162 +173,94 @@ def build_pre_solution_analysis(
     return "\n".join(lines)
 
 
-METHOD_KEYWORDS = {
-    'gradiente': 'gradient',
-    'gradient': 'gradient',
-    'gradual': 'gradient',
-    'lagrange': 'lagrange',
-    'lagrangiano': 'lagrange',
-    'kkt': 'kkt',
-    'karush': 'kkt',
-    'cuadratic': 'qp',
-    'quadratic': 'qp',
-    'qp': 'qp',
-    'cálculo': 'differential',
-    'calculo': 'differential',
-}
+def _merge_payload(primary: Dict[str, Any] | None, fallback: Dict[str, Any] | None) -> Dict[str, Any] | None:
+    if primary is None:
+        return fallback
+    if fallback is None:
+        return primary
 
+    def _needs_value(value):
+        return value is None or value == '' or value == [] or value == {}
 
-def _clean_expr(expr: str) -> str:
-    expr = expr.strip()
-    if len(expr) >= 2 and expr[0] in "\"'`" and expr[-1] == expr[0]:
-        expr = expr[1:-1]
-    return expr.strip().rstrip(';, .')
-
-
-def _strip_to_math(expr: str) -> str:
-    expr = expr.strip()
-    for idx, ch in enumerate(expr):
-        if ch.isalnum() or ch in "+-(":
-            return expr[idx:].strip()
-    return expr
-
-
-def _parse_numeric_list(snippet: str) -> List[float] | None:
-    snippet = snippet.strip()
-    try:
-        value = ast.literal_eval(snippet)
-    except Exception:
-        snippet = snippet.strip('[](){}')
-        parts = [p.strip() for p in re.split(r'[;,]', snippet) if p.strip()]
-        if not parts:
-            return None
-        try:
-            value = [float(p) for p in parts]
-        except Exception:
-            return None
-    if isinstance(value, (int, float)):
-        return [float(value)]
-    if isinstance(value, (list, tuple)):
-        cleaned = []
-        for item in value:
-            try:
-                cleaned.append(float(item))
-            except Exception:
-                return None
-        return cleaned
-    return None
-
-
-def _parse_variables(snippet: str) -> List[str]:
-    snippet = snippet.strip()
-    if not snippet:
-        return []
-    if snippet.startswith('['):
-        try:
-            value = ast.literal_eval(snippet)
-            if isinstance(value, (list, tuple)):
-                return [str(v).strip() for v in value if str(v).strip()]
-        except Exception:
-            pass
-    return [part.strip() for part in re.split(r'[,\s]+', snippet) if part.strip()]
-
-
-def parse_payload_from_text(message: str) -> Dict[str, Any] | None:
-    text = message or ''
-    lowered = text.lower()
-    detected_method = None
-    for keyword, mapped in METHOD_KEYWORDS.items():
-        if keyword in lowered:
-            detected_method = mapped
-            break
-    # Solo soportamos gradiente en este flujo
-    if detected_method and detected_method != 'gradient':
-        return None
-
-    expr = None
-    inferred_vars = None
-    expr_patterns = [
-        r'(?:func(?:ión|ion|objective|objetivo)[^:]*:\s*)(?P<expr>"[^"]+"|\'[^\']+\'|`[^`]+`|[^\n,;]+)',
-        r'f\s*\([^\)]*\)\s*=\s*(?P<expr>[^\n,;]+)',
+    keys = [
+        'objective_expr',
+        'variables',
+        'constraints',
+        'constraints_raw',
+        'x0',
+        'tol',
+        'max_iter',
+        'method',
+        'method_hint',
+        'derivative_only',
     ]
-    for pattern in expr_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            expr = _strip_to_math(_clean_expr(match.group('expr')))
-            if expr:
-                break
-    if not expr:
+    for key in keys:
+        if _needs_value(primary.get(key)) and not _needs_value(fallback.get(key)):
+            primary[key] = fallback.get(key)
+    return primary
+
+
+def _coerce_numeric_list(values: Any, label: str) -> List[float]:
+    if values is None:
+        raise ValueError(f"El campo {label} es obligatorio.")
+    if isinstance(values, (int, float)):
+        return [float(values)]
+    if not isinstance(values, (list, tuple)):
+        raise ValueError(f"{label} debe ser una lista de números reales.")
+    cleaned: List[float] = []
+    for item in values:
+        if item is None or (isinstance(item, str) and not item.strip()):
+            raise ValueError(f"{label} contiene valores vacíos; proporcione todos los componentes numéricos.")
         try:
-            m = re.search(r'(?P<expr>.+?)\s*x0\s*[:=]', text, re.IGNORECASE)
-            if m:
-                expr_guess = _strip_to_math(_clean_expr(m.group('expr')))
-                if expr_guess:
-                    expr = expr_guess
-                    try:
-                        sym = sp.sympify(expr_guess, locals=analyzer.FUNCIONES_PERMITIDAS)
-                        vars_auto = sorted([str(s) for s in sym.free_symbols])
-                        if vars_auto:
-                            inferred_vars = vars_auto
-                    except Exception:
-                        pass
+            cleaned.append(float(item))
         except Exception:
-            pass
-    if not expr:
-        return None
+            raise ValueError(f"Cada componente de {label} debe ser numérico. Revisa: {item!r}")
+    return cleaned
 
-    payload: Dict[str, Any] = {
-        'objective_expr': expr,
-        'constraints': [],
-    }
-    if inferred_vars:
-        payload['variables'] = inferred_vars
-    var_match = re.search(r'variables?\s*[:=]\s*(\[[^\]]+\]|[a-zA-Z_,\s]+)', text, re.IGNORECASE)
-    if var_match:
-        vars_list = _parse_variables(var_match.group(1))
-        if vars_list:
-            payload['variables'] = vars_list
 
-    x0_match = re.search(r'x[_\s]?0\s*[:=]\s*(\[[^\]]+\]|\([^\)]+\)|\{[^\}]+\})', text, re.IGNORECASE)
-    if x0_match:
-        x0_values = _parse_numeric_list(x0_match.group(1))
-        if x0_values is not None:
-            payload['x0'] = x0_values
+def _validate_payload_for_method(method: str, payload: Dict[str, Any], meta: Dict[str, Any]) -> None:
+    objective = payload.get('objective_expr')
+    if not objective:
+        raise ValueError(
+            "No se pudo identificar la función objetivo. Escribe algo como f(x,y) = ... o 'minimizar ...' para continuar."
+        )
 
-    tol_match = re.search(r'tol(?:erancia)?\s*[:=]\s*([0-9eE\.\-+]+)', text, re.IGNORECASE)
-    if tol_match:
-        try:
-            payload['tol'] = float(tol_match.group(1))
-        except Exception:
-            pass
-
-    max_iter_match = re.search(r'(?:max(?:imo)?\s*iter|iteraciones\s*max)\s*[:=]\s*(\d+)', text, re.IGNORECASE)
-    if max_iter_match:
-        try:
-            payload['max_iter'] = int(max_iter_match.group(1))
-        except Exception:
-            pass
-
-    payload['method'] = detected_method or 'gradient'
-    # Fallback: intentar extraer x0 si no se obtuvo
-    if 'x0' not in payload or payload.get('x0') is None:
-        m = re.search(r'x[_\s]?0\s*[:=]\s*(\[[^\]]+\]|\([^\)]+\)|\{[^\}]+\})', text, re.IGNORECASE)
-        if m:
-            x0_values = _parse_numeric_list(m.group(1))
-            if x0_values is not None:
-                payload['x0'] = x0_values
-
-    return payload
+    constraints = meta.get('constraints_normalized') or []
+    if method == 'gradient':
+        x0 = payload.get('x0')
+        variables = meta.get('variables') or []
+        if not variables:
+            raise ValueError(
+                "No se detectaron variables para construir el punto inicial. "
+                "Especifica las variables o escribe la función objetivo en términos de x, y, etc."
+            )
+        if x0 is None:
+            auto = [0.0 for _ in variables]
+            payload.setdefault('_auto_notes', []).append(
+                f"Se asumió x0 = {auto} como punto inicial (no se proporcionó en el enunciado)."
+            )
+            payload['x0'] = auto
+            x0 = auto
+        cleaned_x0 = _coerce_numeric_list(x0, 'x0')
+        if variables and len(cleaned_x0) != len(variables):
+            raise ValueError(
+                f"La dimensión de x0 ({len(x0)}) no coincide con el número de variables detectadas ({len(variables)})."
+            )
+        payload['x0'] = cleaned_x0
+    if method == 'lagrange':
+        eqs = [c for c in constraints if c.get('kind') == 'eq']
+        if not eqs:
+            raise ValueError(
+                "El método de Lagrange requiere al menos una restricción de igualdad g(x)=0. "
+                "Describe las restricciones como g(x)=0 o expr = 0."
+            )
+    if method == 'kkt':
+        ineqs = [c for c in constraints if c.get('kind') in ('le', 'ge')]
+        if not ineqs:
+            raise ValueError(
+                "Para usar condiciones KKT debes incluir restricciones de desigualdad (≤ o ≥). "
+                "Indica expresiones como h(x) <= 0."
+            )
 
 
 def _format_bullets(data: Any) -> str:
@@ -338,16 +279,51 @@ def _extract_payload_with_ai(text: str) -> Dict[str, Any] | None:
             {
                 "role": "system",
                 "content": (
-                    "Extrae un JSON con campos: objective_expr (SymPy), variables (lista), "
-                    "constraints (lista opcional), x0 (lista opcional), tol (float), "
-                    "max_iter (int), derivative_only (bool opcional). Responde solo JSON."
+                    "Eres el asistente analítico de OptiLearn. Recibirás problemas de Programación No Lineal descritos en lenguaje natural. "
+                    "Debes resolver cuatro tareas ANTES de responder:\n"
+                    "1) Analizar el enunciado y escribir la función objetivo en notación SymPy (usa ** para potencias, * para productos, "
+                    "traduce símbolos Unicode como “−” o “·”).\n"
+                    "2) Listar las variables en el orden en que aparecen. Si no se declaran, dedúcelas de la función (ej.: x, y).\n"
+                    "3) Detectar el método adecuado según las reglas:\n"
+                    "   - Sin restricciones → `gradient`.\n"
+                    "   - Solo igualdades → `lagrange`.\n"
+                    "   - Alguna desigualdad → `kkt`.\n"
+                    "   - Función cuadrática con restricciones lineales → `qp`.\n"
+                    "   - El usuario solo pide derivar/analizar → `differential`.\n"
+                    "4) Construir un JSON con los campos obligatorios: "
+                    "`objective_expr`, `variables`, `constraints` (lista de objetos {\"kind\": \"eq\"|\"le\"|\"ge\", \"expr\": \"lhs - rhs\"}), "
+                    "`x0` (lista numérica, usa valores deducidos o null si no existe), `tol` (float o null), `max_iter` (entero o null), "
+                    "`derivative_only` (bool), `method` (uno de gradient|lagrange|kkt|qp|differential) y `method_hint` "
+                    "(misma lista, puede repetir `method`). Cuando no dispongas de algún dato numérico, usa null pero nunca inventes valores.\n"
+                    "Tu salida debe ser SOLO el JSON (sin texto adicional)."
                 ),
             },
             {"role": "user", "content": text},
         ]
         raw = groq_service.chat_completion(messages)
-        return json.loads(raw) if raw else None
+        if not raw:
+            logger.warning("AI extractor returned empty response")
+            return None
+        raw_clean = raw.strip()
+        logger.debug("AI extractor raw response (first 500 chars): %s", raw_clean[:500])
+        # Intentar extraer el bloque JSON aunque venga envuelto en texto/markdown
+        candidate = raw_clean
+        fenced = re.search(r"```json(.*?)```", raw_clean, flags=re.IGNORECASE | re.S)
+        if fenced:
+            candidate = fenced.group(1)
+        else:
+            start = raw_clean.find("{")
+            end = raw_clean.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                candidate = raw_clean[start:end + 1]
+        candidate = candidate.strip("` \n\t")
+        data = json.loads(candidate)
+        logger.debug("AI extractor parsed JSON: %s", candidate[:500])
+        if 'method' not in data or not data.get('method'):
+            data['method'] = data.get('method_hint')
+        return data
     except Exception:
+        logger.exception("AI extractor failed to build payload")
         return None
 
 
@@ -386,25 +362,22 @@ def _narrate_with_ai(payload: Dict[str, Any], meta: Dict[str, Any], resultado: D
         return None
 
 
-def solve_gradient_payload(payload: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
-    problema = {
-        'objective_expr': payload.get('objective_expr'),
-        'variables': payload.get('variables'),
-        'constraints': payload.get('constraints') or payload.get('constraints_raw') or [],
-    }
-    meta = analyzer.analyze_problem(problema)
-    recomendacion = recommender_ai.recommend(meta)
+
+def solve_gradient_payload(
+    payload: Dict[str, Any],
+    problema: Dict[str, Any],
+    meta: Dict[str, Any],
+    recomendacion: Dict[str, Any],
+    method_note: str | None = None,
+) -> tuple[str, Dict[str, Any]]:
     parametros = {
         'x0': payload.get('x0'),
         'tol': float(payload.get('tol', 1e-6)),
         'max_iter': int(payload.get('max_iter', 200)),
     }
     symbolic = _symbolic_details(problema.get('objective_expr', ''), meta.get('variables') or [])
-    metodo_solicitado = payload.get('method') or recomendacion.get('method')
-    if metodo_solicitado != 'gradient':
-        raise ValueError(f"Método {metodo_solicitado} no implementado en esta vista.")
     if meta.get('has_equalities') or meta.get('has_inequalities'):
-        raise ValueError("Actualmente solo se resuelven problemas sin restricciones para gradiente.")
+        raise ValueError('Actualmente solo se resuelven problemas sin restricciones para gradiente.')
 
     resultado = solver_gradiente.solve(
         objective_expr=problema['objective_expr'],
@@ -442,22 +415,300 @@ def solve_gradient_payload(payload: Dict[str, Any]) -> tuple[str, Dict[str, Any]
     report = build_gradient_report(problema, meta, resultado, recomendacion, parametros, symbolic)
 
     ai_narrative = _narrate_with_ai(payload, meta, resultado, recomendacion)
-    # Si la IA devuelve JSON u objeto vacío, descartar y usar fallback.
     if ai_narrative and not ai_narrative.strip().startswith(("{", "[")):
         combined = f"{ai_narrative}\n\n---\n\n{pre_analysis}\n\n---\n\n{report}"
     else:
         traj = resultado.get('iterations', [])
         resumen = [
-            "### Síntesis educativa",
-            f"- Método: {resultado.get('method', 'gradiente')}",
+            "### Sintesis educativa",
+            f"- Metodo: {resultado.get('method', 'gradiente')}",
             f"- Restricciones: eq={meta.get('has_equalities')} | ineq={meta.get('has_inequalities')}",
             f"- Iteraciones ejecutadas: {len(traj)}",
-            f"- x* ≈ {resultado.get('x_star')}",
-            f"- f(x*) ≈ {resultado.get('f_star')}",
+            f"- x* ~= {resultado.get('x_star')}",
+            f"- f(x*) ~= {resultado.get('f_star')}",
             "- Recordatorio formal: en cada iteracion se parte de x_k, se calcula grad f(x_k) y se aplica retroceso Armijo (alpha inicial 1, c=1e-4, alpha=0.5*alpha mientras falle la desigualdad). Con el alpha aceptado se actualiza x_{k+1} = x_k - alpha_k * grad f(x_k) hasta que ||grad f|| es pequena.",
         ]
         combined = f"{pre_analysis}\n\n---\n\n{report}\n\n" + "\n".join(resumen)
+    if method_note:
+        combined = f"**Nota de seleccion:** {method_note}\n\n{combined}"
     return combined, reply_payload
+
+
+
+def solve_qp_payload(
+    payload: Dict[str, Any],
+    problema: Dict[str, Any],
+    meta: Dict[str, Any],
+    recomendacion: Dict[str, Any],
+    method_note: str | None = None,
+) -> tuple[str, Dict[str, Any]]:
+    resultado = solver_cuadratico.solve_qp(
+        objective_expr=problema['objective_expr'],
+        variables=meta.get('variables') or [],
+        constraints=problema.get('constraints') or [],
+    )
+    variables = meta.get('variables') or []
+    constraints_desc = meta.get('constraints_normalized') or problema.get('constraints') or []
+    lines = []
+    lines.append('### Programa cuadratico detectado')
+    lines.append(f"- Variables: {variables or 'no declaradas'}")
+    lines.append(f"- Restricciones: eq={meta.get('has_equalities')} | ineq={meta.get('has_inequalities')}")
+    lines.append(f"- Recomendacion automatica: {recomendacion.get('method')} -> {recomendacion.get('rationale')}")
+    if method_note:
+        lines.append(f"- Nota adicional: {method_note}")
+    lines.append('')
+    lines.append('#### Procedimiento sugerido para QP')
+    lines.append('1. Reescribir f(x) como 0.5 x^T H x + c^T x para identificar H y c.')
+    lines.append('2. Verificar convexidad revisando que H sea semidefinida positiva.')
+    lines.append('3. Formular las restricciones lineales (igualdades y desigualdades) adicionando holguras/artificiales.')
+    lines.append('4. Construir L(x, lambda, mu) y las condiciones KKT.')
+    lines.append('5. Trabajar en dos fases (factibilidad y optimalidad) hasta localizar x*.')
+    lines.append('')
+    if constraints_desc:
+        lines.append('Restricciones declaradas:')
+        for restr in constraints_desc:
+            if isinstance(restr, dict):
+                lines.append(f"- {restr.get('kind', 'ineq')}: {restr.get('expr')}")
+            else:
+                lines.append(f"- {restr}")
+        lines.append('')
+    explicacion = (resultado.get('explanation') or resultado.get('message', '')).strip()
+    if explicacion:
+        lines.append('#### Interpretacion educativa')
+        lines.append(explicacion)
+    else:
+        lines.append('El MVP actual describe la ruta, pero no ejecuta un solver numerico completo para QP.')
+
+    reply_payload: Dict[str, Any] = {
+        'analysis': {
+            'variables': variables,
+            'objective_expr': meta.get('objective_expr'),
+            'constraints': constraints_desc,
+            'recommendation': recomendacion,
+        },
+        'plot': {'type': 'none', 'reason': 'qp_educational'},
+        'solver': {
+            'method': resultado.get('method', 'qp'),
+            'status': resultado.get('status'),
+            'message': resultado.get('message'),
+            'x_star': resultado.get('x_star'),
+            'f_star': resultado.get('f_star'),
+        },
+    }
+    return "\n".join(lines), reply_payload
+
+
+def solve_lagrange_payload(
+    payload: Dict[str, Any],
+    problema: Dict[str, Any],
+    meta: Dict[str, Any],
+    recomendacion: Dict[str, Any],
+    method_note: str | None = None,
+) -> tuple[str, Dict[str, Any]]:
+    equalities = [c.get('expr') for c in (problema.get('constraints') or []) if c.get('kind') == 'eq']
+    resultado = solver_lagrange.solve(
+        objective_expr=problema['objective_expr'],
+        variables=meta.get('variables') or [],
+        equalities=equalities,
+    )
+    lines = []
+    lines.append('### Multiplicadores de Lagrange activados')
+    lines.append(f"- f(x) = {problema.get('objective_expr')}")
+    lines.append(f"- Igualdades detectadas ({len(equalities)}): {equalities or 'sin registrar'}")
+    lines.append(f"- Argumento de recomendacion: {recomendacion.get('rationale')}")
+    if method_note:
+        lines.append(f"- Nota adicional: {method_note}")
+    lines.append('')
+    lines.append('#### Procedimiento guiado')
+    lines.append('1. Formar L(x, lambda) = f(x) + sum(lambda_i * g_i(x)).')
+    lines.append('2. Calcular derivadas parciales respecto a cada variable y cada lambda_i.')
+    lines.append('3. Resolver el sistema estacionario {grad_x L = 0, g_i(x) = 0}.')
+    lines.append('4. Evaluar f en los candidatos y usar el Hessiano restringido para clasificar.')
+    lines.append('5. Interpretar los lambda_i como sensibilidad de cada restriccion.')
+    lines.append('')
+    lines.append('El MVP actual entrega esta guia y recuerda que el solver exacto esta en desarrollo.')
+
+    reply_payload: Dict[str, Any] = {
+        'analysis': {
+            'variables': meta.get('variables'),
+            'objective_expr': meta.get('objective_expr'),
+            'constraints': equalities,
+            'recommendation': recomendacion,
+        },
+        'plot': {'type': 'none', 'reason': 'lagrange_not_implemented'},
+        'solver': {
+            'method': resultado.get('method', 'lagrange'),
+            'status': resultado.get('status', 'not_implemented'),
+            'message': resultado.get('message'),
+        },
+    }
+    return "\n".join(lines), reply_payload
+
+
+def solve_kkt_payload(
+    payload: Dict[str, Any],
+    problema: Dict[str, Any],
+    meta: Dict[str, Any],
+    recomendacion: Dict[str, Any],
+    method_note: str | None = None,
+) -> tuple[str, Dict[str, Any]]:
+    constraints = problema.get('constraints') or []
+    equalities = [c.get('expr') for c in constraints if c.get('kind') == 'eq']
+    inequalities = [c.get('expr') for c in constraints if c.get('kind') in ('le', 'ge')]
+    resultado = solver_kkt.solve(
+        objective_expr=problema.get('objective_expr'),
+        variables=meta.get('variables'),
+        equalities=equalities,
+        inequalities=inequalities,
+    )
+    lines = []
+    lines.append('### Condiciones KKT en escena')
+    lines.append(f"- Objetivo: {problema.get('objective_expr')}")
+    lines.append(f"- Igualdades ({len(equalities)}): {equalities or 'ninguna'}")
+    lines.append(f"- Desigualdades ({len(inequalities)}): {inequalities or 'ninguna'}")
+    lines.append(f"- Justificacion: {recomendacion.get('rationale')}")
+    if method_note:
+        lines.append(f"- Nota adicional: {method_note}")
+    lines.append('')
+    lines.append('#### Pasos estructurados')
+    lines.append('1. Definir L(x, lambda, mu) = f(x) + sum(lambda_i * h_i(x)) + sum(mu_j * g_j(x)).')
+    lines.append('2. Estacionaridad: grad_x L = 0.')
+    lines.append('3. Factibilidad primal: h_i(x)=0 y g_j(x) <= 0.')
+    lines.append('4. Factibilidad dual: mu_j >= 0.')
+    lines.append('5. Complementariedad: mu_j * g_j(x) = 0.')
+    lines.append('6. Resolver el sistema y verificar convexidad para concluir optimalidad.')
+    lines.append('')
+    lines.append('Aun mostrando el guion, este MVP no implementa un numerico KKT completo; sirve como checklist de estudio.')
+
+    reply_payload: Dict[str, Any] = {
+        'analysis': {
+            'variables': meta.get('variables'),
+            'objective_expr': meta.get('objective_expr'),
+            'constraints': constraints,
+            'recommendation': recomendacion,
+        },
+        'plot': {'type': 'none', 'reason': 'kkt_not_implemented'},
+        'solver': {
+            'method': resultado.get('method', 'kkt'),
+            'status': resultado.get('status', 'not_implemented'),
+            'message': resultado.get('message'),
+        },
+    }
+    return "\n".join(lines), reply_payload
+
+
+def solve_differential_payload(
+    payload: Dict[str, Any],
+    problema: Dict[str, Any],
+    meta: Dict[str, Any],
+    recomendacion: Dict[str, Any],
+    method_note: str | None = None,
+) -> tuple[str, Dict[str, Any]]:
+    variables = meta.get('variables') or problema.get('variables') or []
+    if not variables:
+        raise ValueError('No se detectaron variables para derivar.')
+    try:
+        sym_vars = [sp.Symbol(v, real=True) for v in variables]
+        expr_sym = sp.sympify(problema['objective_expr'], locals={v.name: v for v in sym_vars})
+        grad = [sp.diff(expr_sym, v) for v in sym_vars]
+        hess = sp.hessian(expr_sym, sym_vars)
+    except Exception as exc:
+        raise ValueError(f'No se pudo derivar la funcion objetivo: {exc}') from exc
+
+    grad_strings = [str(g) for g in grad]
+    hess_strings = [[str(entry) for entry in row] for row in (hess.tolist() if hasattr(hess, 'tolist') else [[hess]])]
+    lines = []
+    lines.append('### Laboratorio de calculo diferencial')
+    lines.append(f"- f({', '.join(variables)}) = {problema.get('objective_expr')}")
+    lines.append(f'- Gradiente simbolico: {grad_strings}')
+    lines.append(f'- Hessiano: {hess_strings}')
+    if method_note:
+        lines.append(f"- Nota: {method_note}")
+    else:
+        lines.append(f"- Motivo: {recomendacion.get('rationale')}")
+    lines.append('')
+    lines.append('#### Procedimiento sugerido')
+    lines.append('1. Calcular gradiente y Hessiano simbolicos (como arriba).')
+    lines.append('2. Evaluar gradiente en los puntos de interes para verificar estacionaridad.')
+    lines.append('3. Revisar definitud del Hessiano para clasificar el punto.')
+    lines.append('4. Utilizar la informacion para alimentar metodos numericos si es necesario.')
+
+    reply_payload: Dict[str, Any] = {
+        'analysis': {
+            'variables': variables,
+            'objective_expr': meta.get('objective_expr'),
+            'constraints': meta.get('constraints_normalized'),
+            'recommendation': recomendacion,
+        },
+        'plot': {'type': 'none', 'reason': 'symbolic_only'},
+        'solver': {
+            'method': 'differential',
+            'status': 'analysis_only',
+            'gradient': grad_strings,
+            'hessian': hess_strings,
+        },
+    }
+    return "\n".join(lines), reply_payload
+
+
+def solve_structured_problem(payload: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
+    if not payload.get('objective_expr'):
+        raise ValueError(
+            "No se pudo identificar la función objetivo. Incluye expresiones como f(x,y) = ... o 'minimizar ...' para comenzar."
+        )
+    constraints = payload.get('constraints')
+    if constraints is None:
+        constraints = payload.get('constraints_raw') or []
+    problema = {
+        'objective_expr': payload.get('objective_expr'),
+        'variables': payload.get('variables'),
+        'constraints': constraints,
+    }
+    meta = analyzer.analyze_problem(problema)
+    meta_with_flags = dict(meta)
+    if payload.get('derivative_only'):
+        meta_with_flags['derivative_only'] = True
+    recomendacion = recommender_ai.recommend(meta_with_flags)
+
+    method_note = None
+    method = recomendacion.get('method', 'gradient')
+    if payload.get('derivative_only'):
+        method = 'differential'
+        method_note = 'El mensaje solo solicitaba derivadas/gradiente/Hessiano.'
+    elif payload.get('method'):
+        method = payload['method']
+        if method != recomendacion.get('method'):
+            method_note = (
+                f"Metodo forzado por el usuario ({method}) aunque la recomendacion era {recomendacion.get('method')}"
+            )
+        else:
+            method_note = 'El metodo indicado coincide con la recomendacion automatica.'
+    else:
+        hint = payload.get('method_hint')
+        if hint and hint != method:
+            method_note = f"Mencionaste {hint}, pero las caracteristicas detectadas apuntan a {method}."
+        elif hint:
+            method_note = 'Tu pista ya apuntaba a este metodo; sigamos con el flujo oficial.'
+        else:
+            method_note = recomendacion.get('rationale')
+
+    _validate_payload_for_method(method, payload, meta)
+    auto_notes = payload.pop('_auto_notes', [])
+    if auto_notes:
+        notes_text = " ".join(auto_notes)
+        method_note = f"{method_note} {notes_text}".strip() if method_note else notes_text
+
+    if method == 'gradient':
+        return solve_gradient_payload(payload, problema, meta, recomendacion, method_note)
+    if method == 'qp':
+        return solve_qp_payload(payload, problema, meta, recomendacion, method_note)
+    if method == 'lagrange':
+        return solve_lagrange_payload(payload, problema, meta, recomendacion, method_note)
+    if method == 'kkt':
+        return solve_kkt_payload(payload, problema, meta, recomendacion, method_note)
+    if method == 'differential':
+        return solve_differential_payload(payload, problema, meta, recomendacion, method_note)
+    raise ValueError(f'Metodo {method} no soportado en el asistente.')
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -486,7 +737,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             text = data.get('text', '')
             await self.save_message('user', text)
 
+            if not scope_guard.is_message_allowed(text):
+                reminder = scope_guard.scope_violation_reply()
+                await self.save_message('assistant', reminder)
+                await self.send_json({'type': 'assistant_message', 'text': reminder})
+                return
+
             structured_payload: Dict[str, Any] | None = None
+            heuristic_candidate: Dict[str, Any] | None = None
             # Intentar JSON directo
             try:
                 candidate = json.loads(text)
@@ -494,16 +752,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     structured_payload = candidate
             except Exception:
                 structured_payload = None
-            # Intentar parseo heurístico
             if not structured_payload:
-                structured_payload = parse_payload_from_text(text)
-            # Intentar extracción con IA
+                ai_payload = _extract_payload_with_ai(text)
+                if ai_payload:
+                    structured_payload = ai_payload
+            if structured_payload:
+                heuristic_candidate = message_parser.parse_structured_payload(text, allow_partial=True)
+                structured_payload = _merge_payload(structured_payload, heuristic_candidate)
             if not structured_payload:
-                structured_payload = _extract_payload_with_ai(text)
+                if heuristic_candidate is None:
+                    heuristic_candidate = message_parser.parse_structured_payload(text)
+                structured_payload = heuristic_candidate
 
             if structured_payload:
+                logger.debug("Structured payload before solver: %s", json.dumps(structured_payload, ensure_ascii=False))
                 try:
-                    assistant_text, reply_payload = solve_gradient_payload(structured_payload)
+                    assistant_text, reply_payload = solve_structured_problem(structured_payload)
                 except Exception as exc:
                     assistant_text = (
                         "No se pudo resolver el problema con el solver local. "

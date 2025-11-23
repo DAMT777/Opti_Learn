@@ -172,7 +172,9 @@ function connectWS(){
   if(!sid) return;
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   setConnStatus('connecting');
-  ws = new WebSocket(`${proto}://${location.host}/ws/chat/${sid}/`);
+  const wsUrl = new URL(`ws/chat/${sid}/`, window.location.href);
+  wsUrl.protocol = `${proto}:`;
+  ws = new WebSocket(wsUrl);
   ws.onopen = ()=> setConnStatus('online');
   ws.onclose = ()=> setConnStatus('offline');
   ws.onerror = ()=> setConnStatus('offline');
@@ -254,7 +256,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     } else {
       // Fallback HTTP cuando WS no está conectado
       const sid = (window.OPTI && window.OPTI.CHAT_SESSION_ID) ? window.OPTI.CHAT_SESSION_ID : '';
-      fetch('/api/ai/chat', {
+      const apiUrl = new URL('api/ai/chat', window.location.href);
+      fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

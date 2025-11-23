@@ -389,6 +389,7 @@ def _massage_expression(expr: str) -> str:
     # Eliminar posibles repeticiones del nombre de la función al final (p. ej., "C(x,y)")
     expr = re.sub(r'\b[A-Z]\s*\([^)]*\)\s*$', '', expr)
     # Insertar multiplicación implícita donde aplique
-    expr = re.sub(r'(?<=\d)\s+\(', '*(', expr)
+    expr = re.sub(r'(?<=\d)\s*\(', '*(', expr)  # 7(y+2) -> 7*(y+2)
+    expr = re.sub(r'(?<=\d)(?=[A-Za-z])', '*', expr)  # 5x -> 5*x
     expr = re.sub(r'(?<=\))\s+(?=\d)', ' * ', expr)
     return expr

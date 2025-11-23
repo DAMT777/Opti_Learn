@@ -1,6 +1,8 @@
 import json
+import ast
 import asyncio
 import logging
+import re
 from typing import Any, Dict, List
 
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -317,7 +319,16 @@ def _extract_payload_with_ai(text: str) -> Dict[str, Any] | None:
             if start != -1 and end != -1 and end > start:
                 candidate = raw_clean[start:end + 1]
         candidate = candidate.strip("` \n\t")
-        data = json.loads(candidate)
+        try:
+            data = json.loads(candidate)
+        except json.JSONDecodeError:
+            # Fallback: permitir dicts con comillas simples o claves sin comillas
+            try:
+                data = ast.literal_eval(candidate)
+            except Exception:
+                # Intento simple: reemplazar comillas simples por dobles
+                fixed = candidate.replace("'", '"')
+                data = json.loads(fixed)
         logger.debug("AI extractor parsed JSON: %s", candidate[:500])
         if 'method' not in data or not data.get('method'):
             data['method'] = data.get('method_hint')

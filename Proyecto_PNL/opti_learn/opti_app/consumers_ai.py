@@ -307,6 +307,14 @@ def _extract_payload_with_ai(text: str) -> Dict[str, Any] | None:
             logger.warning("AI extractor returned empty response")
             return None
         raw_clean = raw.strip()
+        # Si la respuesta no contiene llaves o parece un bloque LaTeX, abortamos para no romper.
+        if "\\begin" in raw_clean or "\\frac" in raw_clean:
+            logger.debug("AI extractor detected LaTeX-like response, skipping JSON parse.")
+            return None
+        if "```" in raw_clean and "json" not in raw_clean.lower():
+            logger.debug("AI extractor response fenced but not JSON, skipping.")
+            return None
+        logger.info("AI raw completion: %s", raw_clean[:500])
         logger.debug("AI extractor raw response (first 500 chars): %s", raw_clean[:500])
         # Intentar extraer el bloque JSON aunque venga envuelto en texto/markdown
         candidate = raw_clean
@@ -319,6 +327,9 @@ def _extract_payload_with_ai(text: str) -> Dict[str, Any] | None:
             if start != -1 and end != -1 and end > start:
                 candidate = raw_clean[start:end + 1]
         candidate = candidate.strip("` \n\t")
+        if not candidate.startswith(("{", "[")):
+            logger.debug("AI extractor candidate is not JSON-like, skipping: %s", candidate[:80])
+            return None
         try:
             data = json.loads(candidate)
         except json.JSONDecodeError:
@@ -381,10 +392,16 @@ def solve_gradient_payload(
     recomendacion: Dict[str, Any],
     method_note: str | None = None,
 ) -> tuple[str, Dict[str, Any]]:
+    tol_val = payload.get('tol')
+    if tol_val in (None, ''):
+        tol_val = 1e-6
+    max_iter_val = payload.get('max_iter')
+    if max_iter_val in (None, ''):
+        max_iter_val = 200
     parametros = {
         'x0': payload.get('x0'),
-        'tol': float(payload.get('tol', 1e-6)),
-        'max_iter': int(payload.get('max_iter', 200)),
+        'tol': float(tol_val),
+        'max_iter': int(max_iter_val),
     }
     symbolic = _symbolic_details(problema.get('objective_expr', ''), meta.get('variables') or [])
     if meta.get('has_equalities') or meta.get('has_inequalities'):
@@ -765,11 +782,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 structured_payload = None
             if not structured_payload:
                 ai_payload = _extract_payload_with_ai(text)
+                logger.info("AI payload raw: %s", ai_payload)
                 if ai_payload:
                     structured_payload = ai_payload
             if structured_payload:
                 heuristic_candidate = message_parser.parse_structured_payload(text, allow_partial=True)
+                logger.info("Heuristic payload: %s", heuristic_candidate)
                 structured_payload = _merge_payload(structured_payload, heuristic_candidate)
+                logger.info("Merged payload to solver: %s", structured_payload)
             if not structured_payload:
                 if heuristic_candidate is None:
                     heuristic_candidate = message_parser.parse_structured_payload(text)

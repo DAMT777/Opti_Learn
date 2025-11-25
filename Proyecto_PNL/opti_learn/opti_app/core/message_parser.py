@@ -255,6 +255,13 @@ def _extract_constraints(text: str, objective_span: Optional[Tuple[int, int]]) -
         rhs = match.group('rhs')
         if not lhs or not rhs:
             continue
+        lhs_clean = lhs.strip()
+        rhs_clean = rhs.strip()
+        # Filtrar frases largas sin suficiente contenido matemático.
+        if len(lhs_clean.split()) > 5 or len(rhs_clean.split()) > 5:
+            continue
+        if not (re.search(r'[0-9()+\\-*/^]', lhs_clean) and re.search(r'[0-9()+\\-*/^]', rhs_clean)):
+            continue
         normalized = _normalize_constraint(lhs, op, rhs)
         if normalized['kind']:
             constraints.append(normalized)
@@ -282,10 +289,11 @@ def parse_structured_payload(text: str, allow_partial: bool = False) -> Dict[str
 
     text = text.translate(_UNICODE_SYMBOLS)
     expr, span = _extract_objective(text)
-    if not expr:
-        expr = _find_assignment_expr(text)
+    assign_expr = _find_assignment_expr(text)
+    if assign_expr:
+        expr = assign_expr
         span = None
-    if not expr:
+    elif not expr:
         expr = _fallback_expr_from_context(text)
         span = None
     if expr:
@@ -379,11 +387,73 @@ def _trim_expr_noise(expr: str) -> str:
     return expr.strip()
 
 
+def _sanitize_math_expr(expr: str) -> str:
+    """
+    Conserva únicamente caracteres matemáticos básicos y normaliza espacios.
+    Útil cuando el texto viene mezclado con palabras o símbolos extraños.
+    """
+    if not expr:
+        return expr
+    # Mantener solo alfanuméricos, operadores básicos y separadores sencillos.
+    expr = re.sub(r'[^A-Za-z0-9+\-*/^()., ]+', ' ', expr)
+    expr = re.sub(r'\s+', ' ', expr)
+    return expr.strip()
+
+
+def _extract_core_math(expr: str) -> str:
+    """
+    Toma la parte más "matemática" del texto (operadores, paréntesis, dígitos).
+    Útil cuando la frase trae palabras alrededor del modelo.
+    """
+    if not expr:
+        return expr
+    best = None
+    for m in re.finditer(r'[A-Za-z0-9_()+*/^+\- ]+', expr):
+        cand = m.group(0).strip()
+        if not cand:
+            continue
+        if not re.search(r'[0-9*/^()+\-]', cand):
+            continue
+        if best is None or len(cand) > len(best):
+            best = cand
+    return (best or expr).strip()
+
+
+def _filter_math_tokens(expr: str) -> str:
+    """
+    Elimina palabras o fragmentos claramente no matemáticos (texto libre o LaTeX),
+    dejando solo tokens cortos y operadores.
+    """
+    if not expr:
+        return expr
+    tokens = re.split(r'(\s+)', expr)
+    kept: List[str] = []
+    for tok in tokens:
+        if not tok or tok.isspace():
+            kept.append(tok)
+            continue
+        if re.fullmatch(r'[0-9.+\-*/^()]+', tok):
+            kept.append(tok)
+            continue
+        if re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{0,2}', tok):
+            kept.append(tok)
+            continue
+        # Mantener solo tokens alfanumericos/cortos con operadores; el guion va al final para evitar rangos.
+        if re.fullmatch(r'[A-Za-z0-9_+*/^().-]+', tok) and len(tok) <= 12:
+            kept.append(tok)
+            continue
+    return "".join(kept).strip()
+
+
 def _massage_expression(expr: str) -> str:
     if not expr:
         return expr
     expr = expr.translate(_UNICODE_SYMBOLS)
     expr = expr.replace('^', '**')
+    expr = _sanitize_math_expr(expr)
+    expr = _extract_core_math(expr)
+    expr = re.sub(r'^[A-Za-z]\s*\([^)]*\)\s*=?\s*', '', expr)  # quita C(x,y)= o similar al inicio
+    expr = re.sub(r'^[A-Za-z]\)\s*\*', '', expr)  # quita fragmentos truncados como "y) * "
     # Convertir (x-3) 2 -> (x-3)**2 antes de insertar productos implícitos
     expr = re.sub(r'\(([^)]*)\)\s*(\d+)', r'(\1)**\2', expr)
     # Eliminar posibles repeticiones del nombre de la función al final (p. ej., "C(x,y)")
@@ -392,4 +462,6 @@ def _massage_expression(expr: str) -> str:
     expr = re.sub(r'(?<=\d)\s*\(', '*(', expr)  # 7(y+2) -> 7*(y+2)
     expr = re.sub(r'(?<=\d)(?=[A-Za-z])', '*', expr)  # 5x -> 5*x
     expr = re.sub(r'(?<=\))\s+(?=\d)', ' * ', expr)
+    expr = _filter_math_tokens(expr)
+    expr = expr.strip("= ")
     return expr

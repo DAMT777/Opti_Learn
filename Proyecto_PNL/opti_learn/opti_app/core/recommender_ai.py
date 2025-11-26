@@ -3,66 +3,59 @@ from __future__ import annotations
 from typing import Dict, Any
 
 
-def recomendar_metodo(metadatos: Dict[str, Any]) -> Dict[str, Any]:
+def recomendar_metodo(m: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Selecciona el metodo segun reglas formales:
-    Prioridad segun arbol de decision:
-    1) QP solo si: objetivo estrictamente cuadratico + TODAS las restricciones lineales + al menos una restriccion.
-    2) Si hay desigualdades y no aplica QP -> KKT.
-    3) Si hay solo igualdades (sin desigualdades) -> Lagrange.
-    4) Sin restricciones:
-       - Funcion simple/pocos vars -> Calculo diferencial.
-       - Funcion compleja/multiples vars -> Gradiente.
-    Si nada aplica, devuelve method=None.
+    Selecciona el metodo segun reglas formales y orden explicitado en el arbol de decision.
     """
-    iterativo = bool(metadatos.get('iterative_process'))
-    hay_igualdades = bool(metadatos.get('has_equalities'))
-    hay_desigualdades = bool(metadatos.get('has_inequalities'))
-    es_cuadratico = bool(metadatos.get('is_quadratic'))
-    restricciones_lineales = bool(metadatos.get('constraints_are_linear'))
-    hay_restricciones = bool(metadatos.get('has_constraints') or hay_igualdades or hay_desigualdades)
-    derivative_only = bool(metadatos.get('derivative_only'))
+    iterativo = bool(m.get('iterative_process'))
+    eq = bool(m.get('has_equalities'))
+    ineq = bool(m.get('has_inequalities'))
+    cuadratico = bool(m.get('is_quadratic'))
+    lineales = bool(m.get('constraints_are_linear'))
+    restricciones = bool(m.get('has_constraints') or eq or ineq)
+    derivadas = bool(m.get('derivative_only'))
 
-    # 0) QP clasico con restricciones lineales (requiere al menos una restriccion)
-    if es_cuadratico and restricciones_lineales and hay_restricciones:
+    # 0) Si el problema indica explícitamente que el método es iterativo → Gradiente
+    if iterativo:
+        return {
+            'method': 'gradient',
+            'rationale': 'El enunciado describe un procedimiento iterativo → Gradiente.',
+        }
+
+    # 1) QP: cuadratica + restricciones lineales + al menos una restriccion
+    if cuadratico and lineales and restricciones:
         return {
             'method': 'qp',
-            'rationale': 'Objetivo estrictamente cuadratico con restricciones lineales y al menos una restriccion: Programacion Cuadratica.',
+            'rationale': 'Funcion cuadratica + restricciones lineales: Programacion Cuadratica.',
         }
-    # 1) Desigualdades (no QP) -> KKT
-    if hay_desigualdades:
+
+    # 2) Si hay desigualdades → KKT
+    if ineq:
         return {
             'method': 'kkt',
-            'rationale': 'Hay restricciones de desigualdad (y posibles igualdades): condiciones KKT.',
+            'rationale': 'Existen desigualdades: se usan condiciones KKT.',
         }
-    # 3) Solo igualdades -> Lagrange
-    if hay_igualdades:
+
+    # 3) Solo igualdades → Lagrange
+    if eq:
         return {
             'method': 'lagrange',
             'rationale': 'Solo restricciones de igualdad: metodo de Lagrange.',
         }
+
     # 4) Sin restricciones
-    if not hay_restricciones:
-        if derivative_only:
+    if not restricciones:
+        if derivadas:
             return {
                 'method': 'differential',
-                'rationale': 'Sin restricciones y la tarea es analitica (puntos criticos/estabilidad): calculo diferencial.',
-            }
-        # Sin restricciones no se clasifica como QP; elegir entre gradiente/diferencial segun complejidad.
-        if iterativo:
-            return {
-                'method': 'gradient',
-                'rationale': 'Sin restricciones y se menciona proceso iterativo: gradiente.',
+                'rationale': 'Sin restricciones y el problema pide puntos criticos: Calculo diferencial.',
             }
         return {
             'method': 'gradient',
-            'rationale': 'Sin restricciones y enfoque numerico general: descenso por gradiente.',
+            'rationale': 'Sin restricciones y sin indicacion de derivadas: descenso por gradiente.',
         }
-    # 5) No aplica ninguna regla
-    return {
-        'method': None,
-        'rationale': 'No es posible determinar el metodo con la informacion disponible.',
-    }
+
+    return {'method': None, 'rationale': 'No se pudo clasificar.'}
 
 
 # Alias de compatibilidad

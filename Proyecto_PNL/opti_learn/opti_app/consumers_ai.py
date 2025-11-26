@@ -696,29 +696,21 @@ def solve_structured_problem(payload: Dict[str, Any]) -> tuple[str, Dict[str, An
     meta_with_flags = dict(meta)
     if payload.get('derivative_only'):
         meta_with_flags['derivative_only'] = True
+    if payload.get('iterative_process'):
+        meta_with_flags['iterative_process'] = True
     recomendacion = recommender_ai.recommend(meta_with_flags)
 
-    method_note = None
-    method = recomendacion.get('method', 'gradient')
-    if payload.get('derivative_only'):
-        method = 'differential'
-        method_note = 'El mensaje solo solicitaba derivadas/gradiente/Hessiano.'
-    elif payload.get('method'):
-        method = payload['method']
-        if method != recomendacion.get('method'):
-            method_note = (
-                f"Metodo forzado por el usuario ({method}) aunque la recomendacion era {recomendacion.get('method')}"
-            )
-        else:
-            method_note = 'El metodo indicado coincide con la recomendacion automatica.'
-    else:
-        hint = payload.get('method_hint')
-        if hint and hint != method:
-            method_note = f"Mencionaste {hint}, pero las caracteristicas detectadas apuntan a {method}."
-        elif hint:
-            method_note = 'Tu pista ya apuntaba a este metodo; sigamos con el flujo oficial.'
-        else:
-            method_note = recomendacion.get('rationale')
+    method = recomendacion.get('method')
+    method_note = recomendacion.get('rationale')
+    if not method:
+        raise ValueError('No es posible determinar el metodo con la informacion disponible.')
+    forced = payload.get('method')
+    if forced and forced != method:
+        method_note = f"{method_note} (Se solicito {forced}, pero las reglas seleccionan {method})."
+    elif forced and forced == method:
+        method_note = f"{method_note} (Coincide con el metodo indicado)."
+    elif payload.get('method_hint') and payload.get('method_hint') != method:
+        method_note = f"{method_note} (La pista mencionaba {payload.get('method_hint')}, se usara {method})."
 
     _validate_payload_for_method(method, payload, meta)
     auto_notes = payload.pop('_auto_notes', [])
@@ -765,7 +757,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             text = data.get('text', '')
             await self.save_message('user', text)
 
-            if not scope_guard.is_message_allowed(text):
+            message_kind = scope_guard.classify_message(text)
+            if message_kind in ('greeting', 'identity', 'meta', 'empty'):
+                ai_reply = await self._respond_smalltalk(text, message_kind)
+                await self.save_message('assistant', ai_reply)
+                await self.send_json({'type': 'assistant_message', 'text': ai_reply})
+                return
+            if message_kind == 'out_of_scope':
                 reminder = scope_guard.scope_violation_reply()
                 await self.save_message('assistant', reminder)
                 await self.send_json({'type': 'assistant_message', 'text': reminder})
@@ -832,6 +830,35 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def send_json(self, content):
         await self.send(text_data=json.dumps(content))
+
+    async def _respond_smalltalk(self, user_text: str, kind: str) -> str:
+        """
+        Usa Groq con el prompt contextual para responder saludos/preguntas basicas.
+        Si falla la llamada a la IA, recurre al texto base local.
+        """
+        try:
+            prompt = (
+                "Eres el asistente educativo de OptiLearn Web. Responde en una o dos frases, en espanol, "
+                "con tono cercano. No devuelvas JSON ni tablas. No pidas la funcion objetivo a menos que el "
+                "usuario lo solicite. Si es saludo, saluda y ofrece ayuda breve. "
+                "Si preguntan quien te creo, responde: 'Fui creado para OptiLearn Web por estudiantes de la Universidad de los Llanos: "
+                "Diego Alejandro Machado Tovar, Juan Carlos Barrera Guevara y Jesus Gregorio Delgado.' "
+                "Si preguntan como estas, responde de forma humana y dispuesta a ayudar. "
+                f"Mensaje del usuario: {user_text}"
+            )
+            ai_reply = await asyncio.to_thread(
+                groq_service.chat_completion,
+                [{"role": "user", "content": prompt}],
+                None,
+                0.6,
+                180,
+            )
+            if ai_reply and ai_reply.strip():
+                return ai_reply.strip()
+        except Exception:
+            pass
+        # Fallback determinista
+        return scope_guard.smalltalk_reply(kind)
 
     @database_sync_to_async
     def ensure_session(self):

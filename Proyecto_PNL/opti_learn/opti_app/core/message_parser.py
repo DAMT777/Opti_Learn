@@ -34,6 +34,24 @@ DERIVATIVE_KEYWORDS = [
     'diferenciar',
     'calcular gradiente',
     'calcular hessiano',
+    'punto critico',
+    'puntos criticos',
+    'punto de equilibrio',
+    'puntos de equilibrio',
+    'equilibrio',
+    'equilibrium',
+    'estable',
+    'estables',
+    'inestable',
+    'inestables',
+    'critical point',
+    'critical points',
+    'stable',
+    'unstable',
+    'stability',
+    'maximo',
+    'minimo',
+    'curvatura',
 ]
 
 OPTIMIZATION_KEYWORDS = [
@@ -61,6 +79,28 @@ METHOD_KEYWORDS = {
     'diferencial': 'differential',
 }
 
+ITERATIVE_KEYWORDS = [
+    'iterativo',
+    'iterativa',
+    'iteracion',
+    'iteraciones',
+    'algoritmo iterativo',
+    'ajuste de parametros',
+    'descenso',
+    'descenso del gradiente',
+    'gradient descent',
+    'line search',
+    'busqueda de linea',
+    'backtracking',
+    'paso alpha',
+    'tamano de paso',
+    'alpha',
+    'entrenamiento',
+    'training',
+    'epoch',
+    'aprendizaje',
+]
+
 _UNICODE_SYMBOLS = str.maketrans({
     '\u2212': '-',
     '\u2013': '-',
@@ -68,6 +108,14 @@ _UNICODE_SYMBOLS = str.maketrans({
     '\u00b7': '*',
     '\u00d7': '*',
     '\u00f7': '/',
+    '\u00b2': '**2',
+    '\u00b3': '**3',
+    '\u2074': '**4',
+    '\u2075': '**5',
+    '\u2076': '**6',
+    '\u2077': '**7',
+    '\u2078': '**8',
+    '\u2079': '**9',
 })
 
 
@@ -283,6 +331,11 @@ def _detect_derivative_only(text: str) -> bool:
     return has_derivative and not has_optimization
 
 
+def _detect_iterative_process(text: str) -> bool:
+    normalized = _normalize_text(text)
+    return any(keyword in normalized for keyword in ITERATIVE_KEYWORDS)
+
+
 def parse_structured_payload(text: str, allow_partial: bool = False) -> Dict[str, Any] | None:
     if not text or not text.strip():
         return None
@@ -348,11 +401,12 @@ def parse_structured_payload(text: str, allow_partial: bool = False) -> Dict[str
         payload['method_hint'] = method_hint
 
     payload['derivative_only'] = _detect_derivative_only(text)
+    payload['iterative_process'] = _detect_iterative_process(text)
 
     if allow_partial:
         has_any = any(
             key in payload and payload[key] not in (None, [], '', {})
-            for key in ['objective_expr', 'variables', 'constraints', 'x0', 'tol', 'max_iter', 'method_hint']
+            for key in ['objective_expr', 'variables', 'constraints', 'x0', 'tol', 'max_iter', 'method_hint', 'iterative_process']
         )
         return payload if has_any else None
 

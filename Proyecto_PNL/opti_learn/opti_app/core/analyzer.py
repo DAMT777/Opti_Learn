@@ -37,6 +37,7 @@ def analizar_problema(entrada: Dict[str, Any]) -> Dict[str, Any]:
     restricciones_normalizadas: List[Dict[str, Any]] = []
     hay_igualdades = False
     hay_desigualdades = False
+    restricciones_lineales = True
     for restr in restricciones:
         tipo = restr.get('kind')
         expr = restr.get('expr')
@@ -48,6 +49,13 @@ def analizar_problema(entrada: Dict[str, Any]) -> Dict[str, Any]:
             hay_desigualdades = True
         g = _a_expresion_sympy(expr, simbolos)
         restricciones_normalizadas.append({'kind': tipo, 'expr': expr, 'normalized': str(g)})
+        # Lineal si el grado total es <= 1
+        try:
+            polinomio = sp.Poly(g, *[simbolos[v] for v in nombres_variables])
+            if polinomio.total_degree() > 1:
+                restricciones_lineales = False
+        except Exception:
+            restricciones_lineales = False
 
     # ¿Cuadrática?
     es_cuadratica = False
@@ -74,6 +82,8 @@ def analizar_problema(entrada: Dict[str, Any]) -> Dict[str, Any]:
         'constraints_normalized': restricciones_normalizadas,
         'has_equalities': hay_igualdades,
         'has_inequalities': hay_desigualdades,
+        'has_constraints': bool(restricciones_normalizadas),
+        'constraints_are_linear': restricciones_lineales if restricciones_normalizadas else False,
         'is_quadratic': es_cuadratica,
         'convexity_hint': pista_convexidad,
     }

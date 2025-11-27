@@ -479,42 +479,42 @@ def solve_qp_payload(
     recomendacion: Dict[str, Any],
     method_note: str | None = None,
 ) -> tuple[str, Dict[str, Any]]:
+    """Resuelve problema QP y formatea la salida para visualización web."""
     resultado = solver_cuadratico.solve_qp(
         objective_expr=problema['objective_expr'],
         variables=meta.get('variables') or [],
         constraints=problema.get('constraints') or [],
     )
+    
     variables = meta.get('variables') or []
     constraints_desc = meta.get('constraints_normalized') or problema.get('constraints') or []
+    
+    # Construir respuesta formateada
     lines = []
-    lines.append('### Programa cuadratico detectado')
-    lines.append(f"- Variables: {variables or 'no declaradas'}")
+    lines.append('[Parser usado: ai_extractor]')
+    lines.append('')
+    lines.append('### Programa cuadrático detectado')
+    lines.append(f"- Variables: {variables}")
     lines.append(f"- Restricciones: eq={meta.get('has_equalities')} | ineq={meta.get('has_inequalities')}")
-    lines.append(f"- Recomendacion automatica: {recomendacion.get('method')} -> {recomendacion.get('rationale')}")
+    lines.append(f"- Recomendación automática: qp -> {recomendacion.get('rationale')}")
+    
     if method_note:
         lines.append(f"- Nota adicional: {method_note}")
+    
     lines.append('')
-    lines.append('#### Procedimiento sugerido para QP')
-    lines.append('1. Reescribir f(x) como 0.5 x^T H x + c^T x para identificar H y c.')
-    lines.append('2. Verificar convexidad revisando que H sea semidefinida positiva.')
-    lines.append('3. Formular las restricciones lineales (igualdades y desigualdades) adicionando holguras/artificiales.')
-    lines.append('4. Construir L(x, lambda, mu) y las condiciones KKT.')
-    lines.append('5. Trabajar en dos fases (factibilidad y optimalidad) hasta localizar x*.')
-    lines.append('')
-    if constraints_desc:
-        lines.append('Restricciones declaradas:')
-        for restr in constraints_desc:
-            if isinstance(restr, dict):
-                lines.append(f"- {restr.get('kind', 'ineq')}: {restr.get('expr')}")
-            else:
-                lines.append(f"- {restr}")
-        lines.append('')
-    explicacion = (resultado.get('explanation') or resultado.get('message', '')).strip()
+    
+    # Añadir la explicación completa del solver
+    explicacion = (resultado.get('explanation') or '').strip()
     if explicacion:
-        lines.append('#### Interpretacion educativa')
         lines.append(explicacion)
     else:
-        lines.append('El MVP actual describe la ruta, pero no ejecuta un solver numerico completo para QP.')
+        # Fallback si no hay explicación
+        lines.append('#### Procedimiento sugerido para QP')
+        lines.append('1. Reescribir f(x) como 0.5 x^T H x + c^T x para identificar H y c.')
+        lines.append('2. Verificar convexidad revisando que H sea semidefinida positiva.')
+        lines.append('3. Formular las restricciones lineales (igualdades y desigualdades) adicionando holguras/artificiales.')
+        lines.append('4. Construir L(x, lambda, mu) y las condiciones KKT.')
+        lines.append('5. Trabajar en dos fases (factibilidad y optimalidad) hasta localizar x*.')
 
     reply_payload: Dict[str, Any] = {
         'analysis': {
@@ -530,6 +530,7 @@ def solve_qp_payload(
             'message': resultado.get('message'),
             'x_star': resultado.get('x_star'),
             'f_star': resultado.get('f_star'),
+            'steps': resultado.get('steps', []),
         },
     }
     return "\n".join(lines), reply_payload

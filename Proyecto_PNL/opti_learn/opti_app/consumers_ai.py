@@ -579,33 +579,55 @@ def solve_kkt_payload(
     recomendacion: Dict[str, Any],
     method_note: str | None = None,
 ) -> tuple[str, Dict[str, Any]]:
-    constraints = problema.get('constraints') or []
-    equalities = [c.get('expr') for c in constraints if c.get('kind') == 'eq']
-    inequalities = [c.get('expr') for c in constraints if c.get('kind') in ('le', 'ge')]
+    """Resuelve problemas usando condiciones KKT."""
+    
+    # Preparar constraints en formato correcto
+    constraints = []
+    for c in problema.get('constraints', []):
+        constraints.append({
+            'expression': c.get('expr', ''),
+            'rhs': c.get('rhs', 0),
+            'kind': c.get('kind', 'ineq')
+        })
+    
+    # Detectar si es maximización
+    is_max = problema.get('is_maximization', False)
+    
+    # Invocar solver KKT
     resultado = solver_kkt.solve(
         objective_expr=problema.get('objective_expr'),
         variables=meta.get('variables'),
-        equalities=equalities,
-        inequalities=inequalities,
+        constraints=constraints,
+        is_maximization=is_max
     )
+    
     lines = []
-    lines.append('### Condiciones KKT en escena')
-    lines.append(f"- Objetivo: {problema.get('objective_expr')}")
-    lines.append(f"- Igualdades ({len(equalities)}): {equalities or 'ninguna'}")
-    lines.append(f"- Desigualdades ({len(inequalities)}): {inequalities or 'ninguna'}")
-    lines.append(f"- Justificacion: {recomendacion.get('rationale')}")
+    
+    # Si hay nota del método, agregarla
     if method_note:
-        lines.append(f"- Nota adicional: {method_note}")
-    lines.append('')
-    lines.append('#### Pasos estructurados')
-    lines.append('1. Definir L(x, lambda, mu) = f(x) + sum(lambda_i * h_i(x)) + sum(mu_j * g_j(x)).')
-    lines.append('2. Estacionaridad: grad_x L = 0.')
-    lines.append('3. Factibilidad primal: h_i(x)=0 y g_j(x) <= 0.')
-    lines.append('4. Factibilidad dual: mu_j >= 0.')
-    lines.append('5. Complementariedad: mu_j * g_j(x) = 0.')
-    lines.append('6. Resolver el sistema y verificar convexidad para concluir optimalidad.')
-    lines.append('')
-    lines.append('Aun mostrando el guion, este MVP no implementa un numerico KKT completo; sirve como checklist de estudio.')
+        lines.append(method_note)
+        lines.append('')
+    
+    # Agregar explicación del solver
+    if resultado.get('status') == 'success':
+        explanation = resultado.get('explanation', '')
+        if explanation:
+            lines.append(explanation)
+        else:
+            lines.append('✅ Solución KKT encontrada')
+            lines.append('')
+            sol = resultado.get('solution', {})
+            for var, val in sol.items():
+                lines.append(f"- {var} = {val:.6f}")
+            lines.append('')
+            lines.append(f"Valor óptimo: {resultado.get('optimal_value', 'N/A')}")
+    else:
+        lines.append(f"❌ Error en solver KKT: {resultado.get('message', 'Unknown error')}")
+        if 'traceback' in resultado:
+            lines.append('')
+            lines.append('```')
+            lines.append(resultado['traceback'])
+            lines.append('```')
 
     reply_payload: Dict[str, Any] = {
         'analysis': {
@@ -614,11 +636,13 @@ def solve_kkt_payload(
             'constraints': constraints,
             'recommendation': recomendacion,
         },
-        'plot': {'type': 'none', 'reason': 'kkt_not_implemented'},
+        'plot': {'type': 'none', 'reason': 'kkt_analytical'},
         'solver': {
             'method': resultado.get('method', 'kkt'),
-            'status': resultado.get('status', 'not_implemented'),
-            'message': resultado.get('message'),
+            'status': resultado.get('status', 'error'),
+            'solution': resultado.get('solution', {}),
+            'optimal_value': resultado.get('optimal_value'),
+            'candidates': resultado.get('candidates', []),
         },
     }
     return "\n".join(lines), reply_payload

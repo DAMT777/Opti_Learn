@@ -1,3 +1,24 @@
 # No expongas secretos
 opti_learn/.env
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# VSCode
+.vscode/
+
+# JetBrains IDEs
+.idea/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Otros
+*.log
+*.sqlite3
 

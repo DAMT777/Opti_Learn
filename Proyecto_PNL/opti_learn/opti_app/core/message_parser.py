@@ -27,6 +27,7 @@ CONSTRAINT_OPERATORS = {
 DERIVATIVE_KEYWORDS = [
     'derivar',
     'derivada',
+    'derivadas',
     'gradiente',
     'hessiano',
     'hessiana',
@@ -36,6 +37,10 @@ DERIVATIVE_KEYWORDS = [
     'calcular hessiano',
     'punto critico',
     'puntos criticos',
+    'maximo',
+    'minimo',
+    'maximos',
+    'minimos',
     'punto de equilibrio',
     'puntos de equilibrio',
     'equilibrio',
@@ -49,9 +54,9 @@ DERIVATIVE_KEYWORDS = [
     'stable',
     'unstable',
     'stability',
-    'maximo',
-    'minimo',
     'curvatura',
+    'gradiente igual a cero',
+    '\u2202',  # simbolo parcial
 ]
 
 OPTIMIZATION_KEYWORDS = [
@@ -208,6 +213,21 @@ def _extract_objective(text: str) -> Tuple[Optional[str], Optional[Tuple[int, in
     return None, None
 
 
+def _constraint_region(text: str) -> str:
+    """
+    Delimita la seccion de texto donde normalmente aparecen las restricciones
+    (despues de 'sujeto a', 'restricciones', 'subject to', etc.). Si no se
+    encuentra ningun marcador, devuelve el texto completo.
+    """
+    normalized = _normalize_text(text)
+    markers = ['sujeto a', 'restricciones', 'subject to', 'debe cumplir', 'cumplir que', 'cumpliendo']
+    positions = [normalized.find(marker) for marker in markers if marker in normalized]
+    if not positions:
+        return text
+    start = min(pos for pos in positions if pos >= 0)
+    return text[start:]
+
+
 def _find_assignment_expr(text: str) -> Optional[str]:
     """
     Busca patrones del tipo C(x,y)=... dentro de un texto largo y devuelve la parte
@@ -308,7 +328,7 @@ def _extract_constraints(text: str, objective_span: Optional[Tuple[int, int]]) -
         # Filtrar frases largas sin suficiente contenido matemático.
         if len(lhs_clean.split()) > 5 or len(rhs_clean.split()) > 5:
             continue
-        if not (re.search(r'[0-9()+\\-*/^]', lhs_clean) and re.search(r'[0-9()+\\-*/^]', rhs_clean)):
+        if not (re.search(r'[0-9()+\-*/^]', lhs_clean) and re.search(r'[0-9()+\-*/^]', rhs_clean)):
             continue
         normalized = _normalize_constraint(lhs, op, rhs)
         if normalized['kind']:
@@ -336,11 +356,72 @@ def _detect_iterative_process(text: str) -> bool:
     return any(keyword in normalized for keyword in ITERATIVE_KEYWORDS)
 
 
+def _detect_constraint_hints(text: str) -> Dict[str, bool]:
+    """
+    Heuristicas de deteccion de igualdad/desigualdad cuando no se pudo extraer estructurado.
+    No normaliza signos matematicos para no perder informacion.
+    """
+    normalized = _normalize_text(text)
+    has_eq_hint = False
+    has_ineq_hint = False
+    # Igualdades
+    if '=' in text and not re.search(r'[A-Za-z]\s*\([^)]*\)\s*=', text):
+        has_eq_hint = True
+    if any(token in normalized for token in ['igual a', 'exactamente', 'debe ser igual', 'se cumpla que', 'igualdad']):
+        has_eq_hint = True
+    # Desigualdades y cotas
+    inequality_tokens = [
+        '<=',
+        '>=',
+        '\u2264',
+        '\u2265',
+        'menor o igual',
+        'mayor o igual',
+        'no puede superar',
+        'no debe superar',
+        'limite maximo',
+        'limite minimo',
+        'maximo permitido',
+        'minimo permitido',
+        'al menos',
+        'a lo sumo',
+        'cota',
+        'restriccion de capacidad',
+        'capacidad maxima',
+        'limite superior',
+        'limite inferior',
+        'no puede exceder',
+        'no puede superar',
+        'no debe exceder',
+        'no debe superar',
+        'no-negatividad',
+        'menos de',
+        'mas de',
+        'como minimo',
+        'como maximo',
+        'minimo',
+        'maximo',
+        'no puede usarse',
+        'no debe usarse',
+        'no puede ser menor',
+        'no puede ser mayor',
+        'no menor de',
+        'no mayor de',
+        '% de la mezcla',
+    ]
+    if any(tok in normalized for tok in inequality_tokens):
+        has_ineq_hint = True
+    if any(sym in text for sym in ['<', '>']):
+        has_ineq_hint = True
+    return {'has_equalities_hint': has_eq_hint, 'has_inequalities_hint': has_ineq_hint}
+
+
 def parse_structured_payload(text: str, allow_partial: bool = False) -> Dict[str, Any] | None:
     if not text or not text.strip():
         return None
 
     text = text.translate(_UNICODE_SYMBOLS)
+    constraint_text = _constraint_region(text)
     expr, span = _extract_objective(text)
     assign_expr = _find_assignment_expr(text)
     if assign_expr:
@@ -365,7 +446,7 @@ def parse_structured_payload(text: str, allow_partial: bool = False) -> Dict[str
     if variables:
         payload['variables'] = variables
 
-    constraints = _extract_constraints(text, span)
+    constraints = _extract_constraints(constraint_text, span if constraint_text is text else None)
     if constraints:
         payload['constraints'] = [{'kind': c['kind'], 'expr': c['expr']} for c in constraints]
         payload['constraints_raw'] = constraints
@@ -402,6 +483,7 @@ def parse_structured_payload(text: str, allow_partial: bool = False) -> Dict[str
 
     payload['derivative_only'] = _detect_derivative_only(text)
     payload['iterative_process'] = _detect_iterative_process(text)
+    payload['_constraint_hints'] = _detect_constraint_hints(constraint_text)
 
     if allow_partial:
         has_any = any(
@@ -411,6 +493,39 @@ def parse_structured_payload(text: str, allow_partial: bool = False) -> Dict[str
         return payload if has_any else None
 
     return payload if expr else None
+
+
+def parse_and_determine_method(text: str) -> Dict[str, Any] | None:
+    """
+    Parsea el texto del problema y determina automáticamente el método a usar.
+    
+    Esta función combina el parsing estructurado con la detección automática
+    de método según las 5 reglas definidas.
+    
+    Args:
+        text: Texto completo del problema
+    
+    Returns:
+        Diccionario con:
+        - method: Método detectado ('gradient', 'kkt', 'lagrange', 'qp', 'differential')
+        - method_explanation: Explicación de por qué se eligió ese método
+        - solver_params: Parámetros listos para pasar al solver
+        - raw_data: Datos parseados originales
+        
+        Retorna None si no se pudo parsear el problema.
+    """
+    from . import method_detector
+    
+    # Parsear el problema
+    parsed_data = parse_structured_payload(text, allow_partial=True)
+    
+    if not parsed_data:
+        return None
+    
+    # Usar el detector de métodos
+    result = method_detector.analyze_problem(text, parsed_data)
+    
+    return result
 
 
 def _trim_expr_noise(expr: str) -> str:

@@ -122,10 +122,11 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # No hardcodear secretos
 AI_ASSISTANT = {
     'provider': 'groq',
     # Modelos recomendados por Groq a 2025: usa env si está definido.
-    'model': os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant'),
+    # llama-3.1-70b-versatile tiene mayor capacidad de tokens
+    'model': os.getenv('GROQ_MODEL', 'llama-3.1-70b-versatile'),
     'fallback_models': [
-        os.getenv('GROQ_FALLBACK_1', 'llama-3.1-70b-versatile'),
-        os.getenv('GROQ_FALLBACK_2', 'mixtral-8x7b-32768'),
+        os.getenv('GROQ_FALLBACK_1', 'mixtral-8x7b-32768'),
+        os.getenv('GROQ_FALLBACK_2', 'llama-3.1-8b-instant'),
     ],
     'temperature': float(os.getenv('AI_TEMPERATURE', '0.2')),
     'max_tokens': int(os.getenv('AI_MAX_TOKENS', '2048')),

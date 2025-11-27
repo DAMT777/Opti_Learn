@@ -281,23 +281,32 @@ def _extract_payload_with_ai(text: str) -> Dict[str, Any] | None:
             {
                 "role": "system",
                 "content": (
-                    "Eres el asistente analítico de OptiLearn. Recibirás problemas de Programación No Lineal descritos en lenguaje natural. "
-                    "Debes resolver cuatro tareas ANTES de responder:\n"
-                    "1) Analizar el enunciado y escribir la función objetivo en notación SymPy (usa ** para potencias, * para productos, "
-                    "traduce símbolos Unicode como “−” o “·”).\n"
-                    "2) Listar las variables en el orden en que aparecen. Si no se declaran, dedúcelas de la función (ej.: x, y).\n"
-                    "3) Detectar el método adecuado según las reglas:\n"
-                    "   - Sin restricciones → `gradient`.\n"
-                    "   - Solo igualdades → `lagrange`.\n"
-                    "   - Alguna desigualdad → `kkt`.\n"
-                    "   - Función cuadrática con restricciones lineales → `qp`.\n"
-                    "   - El usuario solo pide derivar/analizar → `differential`.\n"
-                    "4) Construir un JSON con los campos obligatorios: "
-                    "`objective_expr`, `variables`, `constraints` (lista de objetos {\"kind\": \"eq\"|\"le\"|\"ge\", \"expr\": \"lhs - rhs\"}), "
-                    "`x0` (lista numérica, usa valores deducidos o null si no existe), `tol` (float o null), `max_iter` (entero o null), "
-                    "`derivative_only` (bool), `method` (uno de gradient|lagrange|kkt|qp|differential) y `method_hint` "
-                    "(misma lista, puede repetir `method`). Cuando no dispongas de algún dato numérico, usa null pero nunca inventes valores.\n"
-                    "Tu salida debe ser SOLO el JSON (sin texto adicional)."
+                    "Eres el asistente de OptiLearn. Recibes problemas de Programacion No Lineal en lenguaje natural. "
+                    "Debes extraer informacion estructurada en JSON.\n\n"
+                    "TAREAS:\n"
+                    "1) Escribir la funcion objetivo en notacion SymPy (usa ** para potencias, * para productos).\n"
+                    "2) Listar las variables. Si no se declaran, deducelas de la funcion.\n"
+                    "3) Extraer TODAS las restricciones. Separa cotas dobles en DOS restricciones:\n"
+                    "   - 'A >= 20' → {\"kind\": \"ge\", \"expr\": \"(A) - (20)\"}\n"
+                    "   - '10 <= F <= 40' → DOS: {\"kind\": \"ge\", \"expr\": \"(F) - (10)\"} Y {\"kind\": \"le\", \"expr\": \"(F) - (40)\"}\n"
+                    "   - 'A + B + F = 100' → {\"kind\": \"eq\", \"expr\": \"(A + B + F) - (100)\"}\n"
+                    "4) Detectar el metodo aplicando ESTAS REGLAS EN ORDEN:\n"
+                    "   REGLA 1: Menciona proceso iterativo → gradient\n"
+                    "   REGLA 2: Restricciones NO LINEALES → kkt\n"
+                    "   REGLA 3: Funcion CUADRATICA + restricciones LINEALES + MEZCLA (>=1 igualdad Y >=1 desigualdad) → qp\n"
+                    "   REGLA 4: SOLO igualdades → lagrange\n"
+                    "   REGLA 5: Hay desigualdades → kkt\n"
+                    "   REGLA 6: Sin restricciones → gradient o differential\n"
+                    "   CRITICO QP: Requiere al menos UNA igualdad Y al menos UNA desigualdad. Solo igualdades → lagrange. Solo desigualdades → kkt.\n\n"
+                    "CAMPOS JSON:\n"
+                    "- objective_expr: string\n"
+                    "- variables: [lista de strings]\n"
+                    "- constraints: [lista de {kind: eq|le|ge, expr: string}]\n"
+                    "- x0, tol, max_iter: opcionales\n"
+                    "- method: gradient|lagrange|kkt|qp|differential\n"
+                    "- method_hint: mismo valor que method\n"
+                    "- derivative_only: bool\n\n"
+                    "Responde SOLO con el JSON, sin texto adicional."
                 ),
             },
             {"role": "user", "content": text},
@@ -694,10 +703,15 @@ def solve_structured_problem(payload: Dict[str, Any]) -> tuple[str, Dict[str, An
     }
     meta = analyzer.analyze_problem(problema)
     meta_with_flags = dict(meta)
-    if payload.get('derivative_only'):
+    if payload.get('derivative_only') or (payload.get('method') == 'differential') or (payload.get('method_hint') == 'differential'):
         meta_with_flags['derivative_only'] = True
     if payload.get('iterative_process'):
         meta_with_flags['iterative_process'] = True
+    # Propagar pista de metodo si viene en el payload (IA/usuario)
+    if payload.get('method'):
+        meta_with_flags['method_hint'] = payload.get('method')
+    elif payload.get('method_hint'):
+        meta_with_flags['method_hint'] = payload.get('method_hint')
 
     # Fusionar hints textuales con los flags del analizador
     hints = payload.get('_constraint_hints') or {}
@@ -707,11 +721,31 @@ def solve_structured_problem(payload: Dict[str, Any]) -> tuple[str, Dict[str, An
     meta_with_flags['has_inequalities'] = has_ineq
     meta_with_flags['has_constraints'] = bool(meta.get('has_constraints') or has_eq or has_ineq)
 
-    # Metodo decidido solo por la IA (payload)
-    method = payload.get('method') or payload.get('method_hint')
+    recomendacion = recommender_ai.recommend(meta_with_flags)
+
+    method = recomendacion.get('method')
+    method_note = recomendacion.get('rationale')
     if not method:
-        raise ValueError('No se pudo determinar el metodo desde la IA (campo method/method_hint ausente).')
-    method_note = f"Metodo provisto por la IA ({method}); sin revalidacion local."
+        raise ValueError('No es posible determinar el metodo con la informacion disponible.')
+    forced = payload.get('method')
+    if forced and forced != method:
+        method_note = (
+            f"{method_note} (Se solicito {forced}, pero las reglas seleccionan {method})."
+        )
+    elif forced and forced == method:
+        method_note = f"{method_note} (Coincide con el metodo indicado)."
+    elif payload.get('method_hint') and payload.get('method_hint') != method:
+        method_note = f"{method_note} (La pista mencionaba {payload.get('method_hint')}, se usara {method})."
+    debug_info = (
+        f"[DEBUG] ai_method={payload.get('method')} | ai_hint={payload.get('method_hint')} | "
+        f"chosen={method} | eq={has_eq} | ineq={has_ineq} | quad={meta_with_flags.get('is_quadratic')} | "
+        f"lin={meta_with_flags.get('constraints_are_linear')} | iterative={meta_with_flags.get('iterative_process')} | "
+        f"derivative_only={meta_with_flags.get('derivative_only')}"
+    )
+    if method_note:
+        method_note = f"{method_note}\n\n{debug_info}"
+    else:
+        method_note = debug_info
 
     _validate_payload_for_method(method, payload, meta)
     auto_notes = payload.pop('_auto_notes', [])
@@ -772,32 +806,57 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             structured_payload: Dict[str, Any] | None = None
             heuristic_candidate: Dict[str, Any] | None = None
+            parse_source = "none"  # Para debugging
+            
             # Intentar JSON directo
             try:
                 candidate = json.loads(text)
                 if isinstance(candidate, dict) and 'objective_expr' in candidate:
                     structured_payload = candidate
+                    parse_source = "json_directo"
             except Exception:
                 structured_payload = None
+            
             if not structured_payload:
                 ai_payload = _extract_payload_with_ai(text)
                 logger.info("AI payload raw: %s", ai_payload)
                 if ai_payload:
                     structured_payload = ai_payload
+                    parse_source = "ai_extractor"
+                    logger.info(f"[DEBUG] Usando AI Extractor - Restricciones: {len(ai_payload.get('constraints', []))}, Metodo: {ai_payload.get('method')}")
+            
             if structured_payload:
                 heuristic_candidate = message_parser.parse_structured_payload(text, allow_partial=True)
                 logger.info("Heuristic payload: %s", heuristic_candidate)
                 structured_payload = _merge_payload(structured_payload, heuristic_candidate)
                 logger.info("Merged payload to solver: %s", structured_payload)
+            # Si el usuario menciona explicitamente KKT, forzar el metodo a KKT
+            try:
+                if 'kkt' in (text or '').lower():
+                    structured_payload.setdefault('method', 'kkt')
+                    structured_payload.setdefault('method_hint', 'kkt')
+            except Exception:
+                pass
             if not structured_payload:
                 if heuristic_candidate is None:
                     heuristic_candidate = message_parser.parse_structured_payload(text)
                 structured_payload = heuristic_candidate
+                if structured_payload:
+                    parse_source = "heuristic_parser"
+                    logger.warning(f"[DEBUG] AI Extractor falló, usando parser heurístico - Restricciones: {len(structured_payload.get('constraints', []))}")
 
             if structured_payload:
                 logger.debug("Structured payload before solver: %s", json.dumps(structured_payload, ensure_ascii=False))
+                
+                # Agregar nota de debug sobre la fuente del parsing
+                debug_note = f"[Parser usado: {parse_source}]"
+                if parse_source == "heuristic_parser":
+                    debug_note += " ADVERTENCIA: El AI Extractor no pudo procesar el texto. Si faltan restricciones, verifica la conexion con Groq API."
+                
                 try:
                     assistant_text, reply_payload = solve_structured_problem(structured_payload)
+                    # Agregar nota de debug al inicio
+                    assistant_text = f"{debug_note}\n\n{assistant_text}"
                 except Exception as exc:
                     assistant_text = (
                         "No se pudo resolver el problema con el solver local. "

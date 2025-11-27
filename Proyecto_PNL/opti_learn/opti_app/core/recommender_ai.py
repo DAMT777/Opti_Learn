@@ -6,6 +6,14 @@ from typing import Dict, Any
 def recomendar_metodo(m: Dict[str, Any]) -> Dict[str, Any]:
     """
     Selecciona el metodo segun reglas formales y orden explicitado en el arbol de decision.
+    
+    ORDEN DE REGLAS (v3.2.0):
+    1. Proceso iterativo → GRADIENT
+    2. Restricciones no lineales → KKT
+    3. Función cuadrática + restricciones lineales + MEZCLA de igualdades Y desigualdades → QP
+    4. SOLO igualdades (sin desigualdades) → LAGRANGE
+    5. Desigualdades → KKT
+    6. Sin restricciones → DIFFERENTIAL o GRADIENT
     """
     iterativo = bool(m.get('iterative_process'))
     eq = bool(m.get('has_equalities'))
@@ -16,37 +24,34 @@ def recomendar_metodo(m: Dict[str, Any]) -> Dict[str, Any]:
     method_hint = (m.get('method_hint') or '').strip()
     restricciones = bool(m.get('has_constraints') or eq or ineq)
 
-    # 0. Iterativo → Gradiente
+    # REGLA 1: Iterativo → Gradiente
     if iterativo:
-        return {'method': 'gradient', 'rationale': 'Proceso iterativo explicito.'}
+        return {'method': 'gradient', 'rationale': 'Proceso iterativo explicito (paso α, iteraciones).'}
 
-    # 0b. Hint explicito (gradiente ya cubierto). Respeta KKT, Lagrange, differential, qp.
-    if method_hint in {'kkt', 'lagrange', 'differential', 'gradient', 'qp'}:
-        return {'method': method_hint, 'rationale': f'Metodo indicado por el enunciado/IA: {method_hint}.'}
+    # REGLA 2: Restricciones no lineales → KKT
+    if restricciones and not lineal:
+        return {'method': 'kkt', 'rationale': 'Restricciones no lineales detectadas (cuadrados, productos de variables, raices).'}
 
-    # 1. Desigualdades no lineales → KKT
-    if ineq and not lineal:
-        return {'method': 'kkt', 'rationale': 'Existen desigualdades no lineales: condiciones KKT.'}
+    # REGLA 3: QP (cuadrática + lineal + MEZCLA de igualdades Y desigualdades)
+    if cuadratico and lineal and eq and ineq:
+        return {'method': 'qp', 'rationale': 'Funcion objetivo cuadratica con restricciones lineales, combinando igualdades y desigualdades (Programacion Cuadratica).'}
 
-    # 2. Igualdades → Lagrange
-    if eq:
-        return {'method': 'lagrange', 'rationale': 'Restricciones de igualdad sin desigualdad.'}
+    # REGLA 4: SOLO igualdades (sin desigualdades) → Lagrange
+    if eq and not ineq:
+        return {'method': 'lagrange', 'rationale': 'Solo restricciones de igualdad (sin desigualdades), aplicar multiplicadores de Lagrange.'}
 
-    # 3. Sin restricciones
+    # REGLA 5: Desigualdades → KKT
+    if ineq:
+        return {'method': 'kkt', 'rationale': 'Restricciones con desigualdades detectadas, requiere condiciones KKT.'}
+
+    # REGLA 6: Sin restricciones
     if not restricciones:
         if deriv:
-            return {'method': 'differential', 'rationale': 'Puntos criticos / derivadas detectadas.'}
-        return {'method': 'gradient', 'rationale': 'Sin restricciones y no derivadas → Gradiente.'}
+            return {'method': 'differential', 'rationale': 'Sin restricciones, buscar puntos criticos mediante derivadas.'}
+        return {'method': 'gradient', 'rationale': 'Sin restricciones, optimizacion mediante gradiente descendente.'}
 
-    # 4. QP solo aqui (cuadratico + restricciones lineales, incluye desigualdades lineales)
-    if cuadratico and lineal and restricciones:
-        return {'method': 'qp', 'rationale': 'Objetivo cuadratico + restricciones lineales.'}
-
-    # 5. Desigualdades restantes → KKT
-    if ineq:
-        return {'method': 'kkt', 'rationale': 'Existen desigualdades: condiciones KKT.'}
-
-    return {'method': None, 'rationale': 'No se pudo clasificar.'}
+    # Fallback
+    return {'method': 'gradient', 'rationale': 'Caso por defecto: metodo del gradiente.'}
 
 
 # Alias de compatibilidad

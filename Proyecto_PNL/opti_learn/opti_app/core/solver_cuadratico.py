@@ -2,13 +2,21 @@ from __future__ import annotations
 
 from typing import Dict, Any, List
 
-# Importar el solver numérico
+# Importar el solver KKT (resuelve QP correctamente)
 try:
-    from .solver_qp_numerical import solve_qp as solve_qp_numerical
-    SOLVER_NUMERICO_DISPONIBLE = True
+    from .solver_qp_kkt import solve_qp as solve_qp_kkt
+    SOLVER_KKT_DISPONIBLE = True
 except ImportError:
-    SOLVER_NUMERICO_DISPONIBLE = False
-    solve_qp_numerical = None
+    SOLVER_KKT_DISPONIBLE = False
+    solve_qp_kkt = None
+
+# Importar el solver Simplex (solo para demostración pedagógica)
+try:
+    from .solver_qp_simplex_real import solve_qp as solve_qp_simplex_real
+    SOLVER_SIMPLEX_DISPONIBLE = True
+except ImportError:
+    SOLVER_SIMPLEX_DISPONIBLE = False
+    solve_qp_simplex_real = None
 
 
 def resolver_qp(
@@ -19,16 +27,22 @@ def resolver_qp(
     """
     Resuelve un problema de Programación Cuadrática (QP) con explicación educativa paso a paso.
     
-    Utiliza el solver completo que implementa el método de dos fases con condiciones KKT.
+    Utiliza el solver KKT que resuelve correctamente problemas QP.
     """
     constraints = constraints or []
     
-    # Usar el solver numérico si está disponible
-    if SOLVER_NUMERICO_DISPONIBLE:
+    # Usar el solver KKT (resuelve correctamente)
+    if SOLVER_KKT_DISPONIBLE:
         try:
-            return solve_qp_numerical(objective_expr, variables, constraints)
+            return solve_qp_kkt(objective_expr, variables, constraints)
         except Exception as e:
-            # Si el solver numérico falla, usar fallback educativo
+            # Si falla, usar fallback educativo
+            return _fallback_educational_qp(objective_expr, variables, constraints, error=str(e))
+    # Fallback: solver Simplex (solo para casos simples)
+    elif SOLVER_SIMPLEX_DISPONIBLE:
+        try:
+            return solve_qp_simplex_real(objective_expr, variables, constraints)
+        except Exception as e:
             return _fallback_educational_qp(objective_expr, variables, constraints, error=str(e))
     else:
         return _fallback_educational_qp(objective_expr, variables, constraints)

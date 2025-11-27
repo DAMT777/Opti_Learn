@@ -1,3 +1,4 @@
+
 # 🎮 SOLUCION COMPLETA DE PROGRAMACION CUADRATICA (QP)
 A continuacion te mostrare todo el procedimiento, explicado paso a paso de forma clara, visual y pedagogica.
 

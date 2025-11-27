@@ -489,19 +489,8 @@ def solve_qp_payload(
     variables = meta.get('variables') or []
     constraints_desc = meta.get('constraints_normalized') or problema.get('constraints') or []
     
-    # Construir respuesta formateada
+    # Construir respuesta formateada - solo incluir la explicación del solver
     lines = []
-    lines.append('[Parser usado: ai_extractor]')
-    lines.append('')
-    lines.append('### Programa cuadrático detectado')
-    lines.append(f"- Variables: {variables}")
-    lines.append(f"- Restricciones: eq={meta.get('has_equalities')} | ineq={meta.get('has_inequalities')}")
-    lines.append(f"- Recomendación automática: qp -> {recomendacion.get('rationale')}")
-    
-    if method_note:
-        lines.append(f"- Nota adicional: {method_note}")
-    
-    lines.append('')
     
     # Añadir la explicación completa del solver
     explicacion = (resultado.get('explanation') or '').strip()
@@ -734,19 +723,12 @@ def solve_structured_problem(payload: Dict[str, Any]) -> tuple[str, Dict[str, An
             f"{method_note} (Se solicito {forced}, pero las reglas seleccionan {method})."
         )
     elif forced and forced == method:
-        method_note = f"{method_note} (Coincide con el metodo indicado)."
+        method_note = f"{method_note} (Coincide con el método indicado)."
     elif payload.get('method_hint') and payload.get('method_hint') != method:
-        method_note = f"{method_note} (La pista mencionaba {payload.get('method_hint')}, se usara {method})."
-    debug_info = (
-        f"[DEBUG] ai_method={payload.get('method')} | ai_hint={payload.get('method_hint')} | "
-        f"chosen={method} | eq={has_eq} | ineq={has_ineq} | quad={meta_with_flags.get('is_quadratic')} | "
-        f"lin={meta_with_flags.get('constraints_are_linear')} | iterative={meta_with_flags.get('iterative_process')} | "
-        f"derivative_only={meta_with_flags.get('derivative_only')}"
-    )
-    if method_note:
-        method_note = f"{method_note}\n\n{debug_info}"
-    else:
-        method_note = debug_info
+        method_note = f"{method_note} (La pista mencionaba {payload.get('method_hint')}, se usará {method})."
+    
+    # Información de debug solo para logs, no para el usuario
+    # (Eliminado del output visible)
 
     _validate_payload_for_method(method, payload, meta)
     auto_notes = payload.pop('_auto_notes', [])
@@ -849,15 +831,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if structured_payload:
                 logger.debug("Structured payload before solver: %s", json.dumps(structured_payload, ensure_ascii=False))
                 
-                # Agregar nota de debug sobre la fuente del parsing
-                debug_note = f"[Parser usado: {parse_source}]"
-                if parse_source == "heuristic_parser":
-                    debug_note += " ADVERTENCIA: El AI Extractor no pudo procesar el texto. Si faltan restricciones, verifica la conexion con Groq API."
-                
                 try:
                     assistant_text, reply_payload = solve_structured_problem(structured_payload)
-                    # Agregar nota de debug al inicio
-                    assistant_text = f"{debug_note}\n\n{assistant_text}"
+                    # No agregar notas de debug al texto visible del usuario
                 except Exception as exc:
                     assistant_text = (
                         "No se pudo resolver el problema con el solver local. "

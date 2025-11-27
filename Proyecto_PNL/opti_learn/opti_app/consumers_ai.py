@@ -698,19 +698,20 @@ def solve_structured_problem(payload: Dict[str, Any]) -> tuple[str, Dict[str, An
         meta_with_flags['derivative_only'] = True
     if payload.get('iterative_process'):
         meta_with_flags['iterative_process'] = True
-    recomendacion = recommender_ai.recommend(meta_with_flags)
 
-    method = recomendacion.get('method')
-    method_note = recomendacion.get('rationale')
+    # Fusionar hints textuales con los flags del analizador
+    hints = payload.get('_constraint_hints') or {}
+    has_eq = bool(meta_with_flags.get('has_equalities') or hints.get('has_equalities_hint'))
+    has_ineq = bool(meta_with_flags.get('has_inequalities') or hints.get('has_inequalities_hint'))
+    meta_with_flags['has_equalities'] = has_eq
+    meta_with_flags['has_inequalities'] = has_ineq
+    meta_with_flags['has_constraints'] = bool(meta.get('has_constraints') or has_eq or has_ineq)
+
+    # Metodo decidido solo por la IA (payload)
+    method = payload.get('method') or payload.get('method_hint')
     if not method:
-        raise ValueError('No es posible determinar el metodo con la informacion disponible.')
-    forced = payload.get('method')
-    if forced and forced != method:
-        method_note = f"{method_note} (Se solicito {forced}, pero las reglas seleccionan {method})."
-    elif forced and forced == method:
-        method_note = f"{method_note} (Coincide con el metodo indicado)."
-    elif payload.get('method_hint') and payload.get('method_hint') != method:
-        method_note = f"{method_note} (La pista mencionaba {payload.get('method_hint')}, se usara {method})."
+        raise ValueError('No se pudo determinar el metodo desde la IA (campo method/method_hint ausente).')
+    method_note = f"Metodo provisto por la IA ({method}); sin revalidacion local."
 
     _validate_payload_for_method(method, payload, meta)
     auto_notes = payload.pop('_auto_notes', [])

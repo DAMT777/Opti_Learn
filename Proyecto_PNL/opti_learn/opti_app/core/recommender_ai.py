@@ -11,49 +11,40 @@ def recomendar_metodo(m: Dict[str, Any]) -> Dict[str, Any]:
     eq = bool(m.get('has_equalities'))
     ineq = bool(m.get('has_inequalities'))
     cuadratico = bool(m.get('is_quadratic'))
-    lineales = bool(m.get('constraints_are_linear'))
+    lineal = bool(m.get('constraints_are_linear'))
+    deriv = bool(m.get('derivative_only'))
+    method_hint = (m.get('method_hint') or '').strip()
     restricciones = bool(m.get('has_constraints') or eq or ineq)
-    derivadas = bool(m.get('derivative_only'))
 
-    # 0) Si el problema indica explícitamente que el método es iterativo → Gradiente
+    # 0. Iterativo → Gradiente
     if iterativo:
-        return {
-            'method': 'gradient',
-            'rationale': 'El enunciado describe un procedimiento iterativo → Gradiente.',
-        }
+        return {'method': 'gradient', 'rationale': 'Proceso iterativo explicito.'}
 
-    # 1) QP: cuadratica + restricciones lineales + al menos una restriccion
-    if cuadratico and lineales and restricciones:
-        return {
-            'method': 'qp',
-            'rationale': 'Funcion cuadratica + restricciones lineales: Programacion Cuadratica.',
-        }
+    # 0b. Hint explicito (gradiente ya cubierto). Respeta KKT, Lagrange, differential, qp.
+    if method_hint in {'kkt', 'lagrange', 'differential', 'gradient', 'qp'}:
+        return {'method': method_hint, 'rationale': f'Metodo indicado por el enunciado/IA: {method_hint}.'}
 
-    # 2) Si hay desigualdades → KKT
-    if ineq:
-        return {
-            'method': 'kkt',
-            'rationale': 'Existen desigualdades: se usan condiciones KKT.',
-        }
+    # 1. Desigualdades no lineales → KKT
+    if ineq and not lineal:
+        return {'method': 'kkt', 'rationale': 'Existen desigualdades no lineales: condiciones KKT.'}
 
-    # 3) Solo igualdades → Lagrange
+    # 2. Igualdades → Lagrange
     if eq:
-        return {
-            'method': 'lagrange',
-            'rationale': 'Solo restricciones de igualdad: metodo de Lagrange.',
-        }
+        return {'method': 'lagrange', 'rationale': 'Restricciones de igualdad sin desigualdad.'}
 
-    # 4) Sin restricciones
+    # 3. Sin restricciones
     if not restricciones:
-        if derivadas:
-            return {
-                'method': 'differential',
-                'rationale': 'Sin restricciones y el problema pide puntos criticos: Calculo diferencial.',
-            }
-        return {
-            'method': 'gradient',
-            'rationale': 'Sin restricciones y sin indicacion de derivadas: descenso por gradiente.',
-        }
+        if deriv:
+            return {'method': 'differential', 'rationale': 'Puntos criticos / derivadas detectadas.'}
+        return {'method': 'gradient', 'rationale': 'Sin restricciones y no derivadas → Gradiente.'}
+
+    # 4. QP solo aqui (cuadratico + restricciones lineales, incluye desigualdades lineales)
+    if cuadratico and lineal and restricciones:
+        return {'method': 'qp', 'rationale': 'Objetivo cuadratico + restricciones lineales.'}
+
+    # 5. Desigualdades restantes → KKT
+    if ineq:
+        return {'method': 'kkt', 'rationale': 'Existen desigualdades: condiciones KKT.'}
 
     return {'method': None, 'rationale': 'No se pudo clasificar.'}
 

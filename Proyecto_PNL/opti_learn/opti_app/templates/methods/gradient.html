@@ -201,43 +201,55 @@ En cada iteración actualiza $x_{k+1} = x_k + \alpha_k d_k$ donde $\alpha_k$ se 
 </div>
 {% endblock %}
 
-{% block visualizations_content %}
-<div class="viz-card" id="plotContour">
-  <div class="viz-card__header">
-    <i class="bi bi-layers"></i>
-    <span>Curvas de nivel + Trayectoria</span>
-  </div>
-  <div class="viz-card__body">
-    <div class="viz-placeholder">
-      <i class="bi bi-arrow-right"></i>
-      <span>Trayectoria $x_0 \to x_1 \to \cdots \to x^*$ sobre curvas de nivel</span>
+{% block visualizations_section %}
+<section class="method-section method-section--visualizations glass-card p-4 fade-in-up" style="animation-delay: 0.4s" id="visualizationsSection">
+  <div class="section-header mb-4">
+    <div class="section-header__icon section-header__icon--visualizations"><i class="bi bi-graph-up"></i></div>
+    <div class="section-header__text">
+      <h5 class="section-header__title mb-0">Visualizaciones</h5>
+      <span class="section-header__subtitle">Gráficas interactivas del problema y solución</span>
     </div>
   </div>
-</div>
+  
+  <div class="visualizations-grid">
+    <div class="viz-card" id="plotContour">
+      <div class="viz-card__header">
+        <i class="bi bi-layers"></i>
+        <span>Curvas de nivel + Trayectoria</span>
+      </div>
+      <div class="viz-card__body">
+        <div class="viz-placeholder">
+          <i class="bi bi-arrow-right"></i>
+          <span>Trayectoria $x_0 \to x_1 \to \cdots \to x^*$ sobre curvas de nivel</span>
+        </div>
+      </div>
+    </div>
 
-<div class="viz-card" id="plotSurface">
-  <div class="viz-card__header">
-    <i class="bi bi-box"></i>
-    <span>Superficie 3D + Camino</span>
-  </div>
-  <div class="viz-card__body">
-    <div class="viz-placeholder">
-      <i class="bi bi-badge-3d"></i>
-      <span>Superficie de f(x,y) con el camino de descenso</span>
+    <div class="viz-card" id="plotSurface">
+      <div class="viz-card__header">
+        <i class="bi bi-box"></i>
+        <span>Superficie 3D + Camino</span>
+      </div>
+      <div class="viz-card__body">
+        <div class="viz-placeholder">
+          <i class="bi bi-badge-3d"></i>
+          <span>Superficie de f(x,y) con el camino de descenso</span>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-<div class="viz-card" id="plotFx">
-  <div class="viz-card__header">
-    <i class="bi bi-graph-down"></i>
-    <span>Convergencia $f(x_k)$</span>
-  </div>
-  <div class="viz-card__body">
-    <div class="viz-placeholder">
-      <i class="bi bi-activity"></i>
-      <span>Gráfica de $f(x_k)$ vs iteración $k$</span>
+    <div class="viz-card" id="plotFx">
+      <div class="viz-card__header">
+        <i class="bi bi-graph-down"></i>
+        <span>Convergencia $f(x_k)$</span>
+      </div>
+      <div class="viz-card__body">
+        <div class="viz-placeholder">
+          <i class="bi bi-activity"></i>
+          <span>Gráfica de $f(x_k)$ vs iteración $k$</span>
+        </div>
+      </div>
     </div>
   </div>
-</div>
+</section>
 {% endblock %}

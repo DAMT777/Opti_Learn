@@ -230,9 +230,7 @@ class LagrangeVisualizer3D:
             print(f"✅ Visualización 3D generada: {output_path}")
             
             # Retornar ruta relativa para usar en el servidor web
-            # Convertir de absoluto a relativo desde opti_app/
-            relative_path = os.path.join('static', 'tmp', filename)
-            return relative_path
+            return f'/static/tmp/{filename}'
             
         except Exception as e:
             print(f"❌ Error generando visualización 3D: {str(e)}")

@@ -204,8 +204,8 @@ class LagrangeVisualizer:
             plt.savefig(filepath, dpi=120, bbox_inches='tight')  # DPI reducido de 150 a 120
             plt.close(fig)
             
-            # Retornar ruta relativa
-            return f'static/tmp/{filename}'
+            # Retornar ruta relativa (Django sirve static/ de cada app bajo /static/)
+            return f'/static/tmp/{filename}'
             
         except Exception as e:
             print(f"Error generando visualización: {e}")

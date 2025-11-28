@@ -165,9 +165,8 @@ class DifferentialVisualizer:
             
             print(f"✅ Visualización 2D generada: {output_path}")
             
-            # Retornar ruta relativa
-            relative_path = os.path.join('static', 'tmp', filename)
-            return relative_path
+            # Retornar ruta relativa para usar en el servidor web
+            return f"/static/tmp/{filename}"
             
         except Exception as e:
             print(f"❌ Error generando visualización 2D: {str(e)}")

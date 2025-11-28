@@ -1,0 +1,23 @@
+/* Transiciones suaves */
+main{ transition: padding .3s ease; overflow: hidden; }
+.app-shell{ width:100%; transition: margin-left .28s cubic-bezier(.2,.8,.2,1), width .28s cubic-bezier(.2,.8,.2,1); will-change: margin-left, width; }
+.chat-header{ transition: padding .3s ease, background-color .25s ease, border-color .25s ease, color .25s ease; }
+
+/* Transiciones de tema (suaves para fondos, texto y bordes) */
+body, .app-shell, main, .flex-grow-1,
+.sidebar, .card-soft, .chat-input, .item-link,
+.brand, .text-dark-50, .form-check-label{
+  transition: background-color .35s ease, color .25s ease, border-color .35s ease, box-shadow .35s ease;
+}
+
+/* Transiciones suaves en el área de chat y la barra de entrada para acompañar el cambio */
+#chat{ transition: max-width .28s cubic-bezier(.2,.8,.2,1), padding .2s ease, transform .28s cubic-bezier(.2,.8,.2,1); }
+.chat-footer{ transition: transform .28s cubic-bezier(.2,.8,.2,1); }
+.chat-footer .chat-input{ transition: width .28s cubic-bezier(.2,.8,.2,1), max-width .28s cubic-bezier(.2,.8,.2,1), min-height .2s ease, border-color .2s ease, box-shadow .2s ease; }
+
+/* Accesibilidad: reducir animaciones si el usuario lo prefiere */
+@media (prefers-reduced-motion: reduce){
+  .app-shell{ transition: margin-left .01s linear !important; transform:none !important; filter:none !important; }
+  #chat, .chat-footer, .chat-footer .chat-input{ transition: none !important; transform:none !important; }
+  .typing-dots i{ animation: none; opacity:.55; }
+}

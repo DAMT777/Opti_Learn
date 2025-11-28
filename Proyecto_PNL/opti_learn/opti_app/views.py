@@ -485,7 +485,7 @@ def solve_differential_manual(request):
     Recibe: objective_expr, variables
     Retorna: explanation (Markdown con LaTeX + imágenes), metadata
     """
-    from .core.solver_differential import solve_with_differential_method
+    from .core.solver_differential import solve_with_differential_method, serialize_for_json
     
     try:
         data = request.data
@@ -503,17 +503,31 @@ def solve_differential_manual(request):
             variable_names=variables
         )
         
+        # Extraer datos de los pasos para el frontend
+        steps = result.get('steps', {})
+        gradient_data = steps.get('step2', {})
+        hessian_data = steps.get('step4', {})
+        classification_data = steps.get('step5', {})
+        
+        # Serializar todos los datos para asegurar compatibilidad JSON
+        metadata = serialize_for_json({
+            'critical_points': result.get('critical_points', []),
+            'optimal_point': result.get('optimal_point'),
+            'optimal_value': result.get('optimal_value'),
+            'nature': result.get('nature'),
+            'plot_2d_path': result.get('plot_2d_path'),
+            'plot_3d_path': result.get('plot_3d_path'),
+            'gradient': gradient_data.get('gradient_latex') or gradient_data.get('gradient'),
+            'hessian': hessian_data.get('hessian_latex') or hessian_data.get('hessian_matrix'),
+            'hessian_det': hessian_data.get('determinant'),
+            'eigenvalues': classification_data.get('eigenvalues'),
+            'classifications': classification_data.get('classifications', []),
+        })
+        
         return Response({
             'success': True,
             'explanation': result.get('explanation', ''),
-            'metadata': {
-                'critical_points': result.get('critical_points', []),
-                'optimal_point': result.get('optimal_point'),
-                'optimal_value': result.get('optimal_value'),
-                'nature': result.get('nature'),
-                'plot_2d_path': result.get('plot_2d_path'),
-                'plot_3d_path': result.get('plot_3d_path'),
-            }
+            'metadata': metadata
         })
         
     except Exception as e:
@@ -581,13 +595,31 @@ def solve_kkt_manual(request):
         )
         result = solver.solve()
         
+        # Convertir solution dict a lista ordenada para display
+        solution = result.get('solution', {})
+        if isinstance(solution, dict):
+            x_star_values = [solution.get(var, 0) for var in variables]
+        else:
+            x_star_values = solution
+        
+        # Extraer multiplicadores lambda y mu del mejor candidato
+        candidates = result.get('candidates', [])
+        lambda_eq = []
+        mu_ineq = []
+        if candidates:
+            best = candidates[0]
+            mu_ineq = list(best.get('lambdas', {}).values())
+            lambda_eq = list(best.get('mus', {}).values())
+        
         return Response({
             'success': result.get('status') == 'success',
             'explanation': result.get('explanation', ''),
             'metadata': {
-                'x_star': result.get('solution'),
+                'x_star': x_star_values,
                 'f_star': result.get('optimal_value'),
-                'candidates': result.get('candidates', []),
+                'lambda_eq': lambda_eq,
+                'mu_ineq': mu_ineq,
+                'candidates': candidates,
                 'is_maximization': is_maximization,
             }
         })
@@ -850,6 +882,31 @@ def solve_qp_manual(request):
             constraints=qp_constraints
         )
         
+        # Extraer matrices y datos adicionales de los steps
+        steps = result.get('steps', [])
+        Q = None
+        c_vector = None
+        convexity = None
+        kkt_solution = []
+        
+        for step in steps:
+            contenido = step.get('contenido', {})
+            if step.get('numero') == 2:  # Paso de extracción de matrices
+                Q = contenido.get('D')
+                c_vector = contenido.get('C')
+            elif step.get('numero') == 3:  # Paso de convexidad
+                convexity = {
+                    'eigenvalues': contenido.get('eigenvalues', []),
+                    'definiteness': contenido.get('definiteness', ''),
+                    'is_convex': contenido.get('is_convex', False)
+                }
+            elif step.get('numero') == 5:  # Paso de solución
+                x_opt = contenido.get('x_star', [])
+                if x_opt:
+                    for i, var in enumerate(variables):
+                        if i < len(x_opt):
+                            kkt_solution.append({'var': var, 'value': x_opt[i], 'type': 'primal'})
+        
         return Response({
             'success': result.get('status') in ['success', 'educational_guide', 'optimal'],
             'explanation': result.get('explanation', ''),
@@ -857,7 +914,11 @@ def solve_qp_manual(request):
                 'x_star': result.get('x_star'),
                 'f_star': result.get('f_star'),
                 'status': result.get('status'),
-                'steps': result.get('steps', []),
+                'steps': steps,
+                'Q': Q,
+                'c': c_vector,
+                'convexity': convexity,
+                'kkt_solution': kkt_solution,
             }
         })
         

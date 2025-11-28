@@ -64,16 +64,55 @@ function renderMarkdownToHTML(text){
 }
 
 function attachPlotForPayload(payload, bubble){
-  if(!payload || !payload.plot || !bubble) return;
-  const plotData = payload.plot.plot_data;
+  if(!payload || !bubble) return;
   const bubbleEl = bubble.closest('.bubble') || bubble;
   if(!bubbleEl) return;
+  
+  // Remover plots anteriores
+  bubbleEl.querySelectorAll('.assistant-plot').forEach(node => node.remove());
+  
+  // NUEVO: Manejar imágenes estáticas (Lagrange, Differential)
+  const plot2dPath = payload.plot_2d_path;
+  const plot3dPath = payload.plot_3d_path;
+  if(plot2dPath || plot3dPath){
+    const plotContainer = document.createElement('div');
+    plotContainer.className = 'assistant-plot static-plots-container';
+    plotContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; justify-content: center;';
+    
+    if(plot2dPath){
+      const img2d = document.createElement('img');
+      img2d.src = plot2dPath;
+      img2d.alt = 'Gráfica 2D';
+      img2d.style.cssText = 'max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);';
+      img2d.onerror = () => { img2d.style.display = 'none'; };
+      plotContainer.appendChild(img2d);
+    }
+    
+    if(plot3dPath){
+      const img3d = document.createElement('img');
+      img3d.src = plot3dPath;
+      img3d.alt = 'Gráfica 3D';
+      img3d.style.cssText = 'max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);';
+      img3d.onerror = () => { img3d.style.display = 'none'; };
+      plotContainer.appendChild(img3d);
+    }
+    
+    const md = bubbleEl.querySelector('.md');
+    if(md){
+      md.insertAdjacentElement('afterend', plotContainer);
+    } else {
+      bubbleEl.appendChild(plotContainer);
+    }
+    return; // Ya manejamos las imágenes estáticas
+  }
+  
+  // Continuar con manejo de plots interactivos (Plotly)
+  if(!payload.plot) return;
+  const plotData = payload.plot.plot_data;
   if(plotData && plotData.allow_plots === false){
-    bubbleEl.querySelectorAll('.assistant-plot').forEach(node => node.remove());
     return;
   }
   if(plotData) bubbleEl.__gradientPlotData = plotData;
-  bubbleEl.querySelectorAll('.assistant-plot').forEach(node => node.remove());
   // 1D: graficar f(x) y trayectoria si existe func_1d
   if(plotData && plotData.func_1d && window.Plotly){
     const chart = document.createElement('div');

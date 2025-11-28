@@ -46,9 +46,14 @@ def serialize_for_json(obj):
     if isinstance(obj, (sp.Symbol, sp.Expr, sp.Basic)):
         return str(obj)
     elif isinstance(obj, dict):
-        return {k: serialize_for_json(v) for k, v in obj.items()}
+        # Convertir tanto claves como valores
+        return {str(k) if isinstance(k, (sp.Symbol, sp.Expr, sp.Basic)) else k: serialize_for_json(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
         return [serialize_for_json(item) for item in obj]
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, np.generic):
+        return obj.item()
     elif isinstance(obj, (int, float, str, bool, type(None))):
         return obj
     else:

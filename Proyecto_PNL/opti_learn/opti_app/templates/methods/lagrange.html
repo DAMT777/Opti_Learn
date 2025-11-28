@@ -192,43 +192,42 @@ y encuentra puntos donde el gradiente de $f$ es proporcional al gradiente de $g$
 </div>
 {% endblock %}
 
-{% block visualizations_content %}
-<div class="viz-card" id="plotContour">
-  <div class="viz-card__header">
-    <i class="bi bi-layers"></i>
-    <span>Curvas de nivel + Restricción</span>
-  </div>
-  <div class="viz-card__body">
-    <div class="viz-placeholder">
-      <i class="bi bi-bullseye"></i>
-      <span>Visualización de tangencia entre curvas de nivel y restricción</span>
+{% block visualizations_section %}
+<section class="method-section method-section--visualizations glass-card p-4 fade-in-up" style="animation-delay: 0.4s" id="visualizationsSection">
+  <div class="section-header mb-4">
+    <div class="section-header__icon section-header__icon--visualizations"><i class="bi bi-graph-up"></i></div>
+    <div class="section-header__text">
+      <h5 class="section-header__title mb-0">Visualizaciones</h5>
+      <span class="section-header__subtitle">Gráficas del problema y punto óptimo</span>
     </div>
   </div>
-</div>
+  
+  <div class="visualizations-grid">
+    <div class="viz-card" id="plotContour">
+      <div class="viz-card__header">
+        <i class="bi bi-layers"></i>
+        <span>Curvas de nivel + Restricción</span>
+      </div>
+      <div class="viz-card__body">
+        <div class="viz-placeholder">
+          <i class="bi bi-bullseye"></i>
+          <span>Visualización de tangencia entre curvas de nivel y restricción</span>
+        </div>
+      </div>
+    </div>
 
-<div class="viz-card" id="plotSurface">
-  <div class="viz-card__header">
-    <i class="bi bi-box"></i>
-    <span>Superficie 3D + Trayectoria</span>
-  </div>
-  <div class="viz-card__body">
-    <div class="viz-placeholder">
-      <i class="bi bi-badge-3d"></i>
-      <span>Superficie de f(x,y) con la restricción g(x,y)=0 superpuesta</span>
+    <div class="viz-card" id="plotSurface">
+      <div class="viz-card__header">
+        <i class="bi bi-box"></i>
+        <span>Superficie 3D + Restricción</span>
+      </div>
+      <div class="viz-card__body">
+        <div class="viz-placeholder">
+          <i class="bi bi-badge-3d"></i>
+          <span>Superficie de f(x,y) con la restricción g(x,y)=0 superpuesta</span>
+        </div>
+      </div>
     </div>
   </div>
-</div>
-
-<div class="viz-card viz-card--wide" id="plotGradients">
-  <div class="viz-card__header">
-    <i class="bi bi-arrow-right-circle"></i>
-    <span>Campo de gradientes</span>
-  </div>
-  <div class="viz-card__body">
-    <div class="viz-placeholder">
-      <i class="bi bi-arrows-move"></i>
-      <span>Visualización de $\nabla f$ y $\nabla g$ en el punto óptimo</span>
-    </div>
-  </div>
-</div>
+</section>
 {% endblock %}

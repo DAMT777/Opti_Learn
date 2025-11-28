@@ -574,12 +574,18 @@ def solve_lagrange_payload(
             'constraints': equalities,
             'recommendation': recomendacion,
         },
-        'plot': {'type': 'none', 'reason': 'lagrange_symbolic'},
+        'plot': {'type': 'static', 'reason': 'lagrange_matplotlib'},
+        'plot_2d_path': resultado.get('plot_2d_path'),
+        'plot_3d_path': resultado.get('plot_3d_path'),
         'solver': {
             'method': resultado.get('method', 'lagrange'),
             'status': resultado.get('status', 'error'),
             'message': resultado.get('message', ''),
             'solution': resultado.get('solution', {}),
+            'x_star': resultado.get('x_star'),
+            'f_star': resultado.get('f_star'),
+            'lambda_star': resultado.get('lambda_star'),
+            'critical_points': resultado.get('critical_points', []),
         },
     }
     
@@ -702,12 +708,18 @@ def solve_differential_payload(
                 'constraints': meta.get('constraints_normalized'),
                 'recommendation': recomendacion,
             },
-            'plot': {'type': 'embedded', 'reason': 'included_in_explanation'},
+            'plot': {'type': 'static', 'reason': 'differential_matplotlib'},
+            'plot_2d_path': result.get('plot_2d_path'),
+            'plot_3d_path': result.get('plot_3d_path'),
             'solver': {
                 'method': 'differential',
                 'status': result['status'],
                 'solution': result.get('solution'),
                 'steps': result.get('steps'),
+                'critical_points': result.get('critical_points', []),
+                'optimal_point': result.get('optimal_point'),
+                'optimal_value': result.get('optimal_value'),
+                'nature': result.get('nature'),
             },
         }
         

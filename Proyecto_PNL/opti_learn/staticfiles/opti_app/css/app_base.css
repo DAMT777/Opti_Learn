@@ -1,0 +1,44 @@
+/* OptiLearn UI (restaurado + animaciones + modo claro) */
+:root{
+  /* Light */
+  --c-bg-1:#eff9ff; --c-bg-2:#dcf1fd; --c-s1:#c1e7fc; --c-s2:#96d9fa; --c-s3:#65c2f5; --c-s4:#40a6f1;
+  --c-p1:#2185e4; --c-p2:#2274d3; --c-ink:#193152;
+  /* Dark */
+  --d-surface:#0f1b34; --d-ink:#cfd9e6; --d-muted:#95a7c0;
+  /* Chat input sizing */
+  --chat-input-width: 860px; /* ligeramente más angosto que el área de chat */
+  --chat-input-max: 92vw;
+  --chat-input-height: 56px;   /* un poco más bajo */
+  --chat-input-radius: 28px;   /* pill proporcionado */
+  --chat-border-dark: #2b5ea9; /* contraste en oscuro */
+  --chat-border-light: #a8c3ee;/* contraste en claro */
+  --side-width: 320px;         /* ancho del panel lateral */
+  /* Scrollbar (modo oscuro por defecto) */
+  --scroll-track: rgba(255,255,255,.08);
+  --scroll-thumb: rgba(255,255,255,.35);
+  --scroll-thumb-hover: rgba(255,255,255,.55);
+}
+
+/* Bloquear scroll solo en la página de chat */
+body.chat-page{ height:100vh; overflow:hidden; }
+
+/* Temas */
+body.theme-dark{ color:var(--d-ink); background: var(--d-surface); }
+.bg-gradient.theme-dark{ background: var(--d-surface); }
+/* Asegurar que todo el lienzo tenga el mismo color del chat */
+body.theme-dark .app-shell,
+body.theme-dark main,
+body.theme-dark .flex-grow-1{ background: var(--d-surface) !important; }
+body.theme-dark .bg-gradient{ background: var(--d-surface); }
+
+body.theme-light{ color: var(--c-ink); background: #ffffff; }
+.bg-gradient.theme-light{ background: #ffffff; }
+body.theme-light .app-shell,
+body.theme-light main,
+body.theme-light .flex-grow-1{ background: #ffffff !important; }
+/* Scrollbar tema claro */
+body.theme-light{
+  --scroll-track: rgba(0,0,0,.06);
+  --scroll-thumb: rgba(0,0,0,.35);
+  --scroll-thumb-hover: rgba(0,0,0,.5);
+}

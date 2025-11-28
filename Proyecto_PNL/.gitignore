@@ -18,6 +18,10 @@ __pycache__/
 # Windows
 Thumbs.db
 
+# Archivos temporales de visualización
+opti_learn/opti_app/static/tmp/*.png
+static/tmp/*.png
+
 # Otros
 *.log
 *.sqlite3

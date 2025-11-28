@@ -9,6 +9,21 @@ import sympy as sp
 from sympy import symbols, diff, solve as sp_solve, latex, Matrix, simplify
 import numpy as np
 
+# Importar visualizadores
+try:
+    from .visualizer_lagrange import generate_lagrange_plot
+    VISUALIZER_AVAILABLE = True
+except ImportError:
+    VISUALIZER_AVAILABLE = False
+    print("Warning: Visualizador 2D de Lagrange no disponible")
+
+try:
+    from .visualizer_lagrange_3d import generate_lagrange_3d_plot
+    VISUALIZER_3D_AVAILABLE = True
+except ImportError:
+    VISUALIZER_3D_AVAILABLE = False
+    print("Warning: Visualizador 3D de Lagrange no disponible")
+
 
 def format_number(value: float, decimals: int = 4) -> str:
     """Formatea un número con decimales fijos."""
@@ -116,9 +131,44 @@ class LagrangeSolver:
             # PASO 7: Valor óptimo
             step7 = self._step7_evaluate_optimal()
             
+            # PASO 8: Generar visualizaciones (solo para 2D)
+            plot_path_2d = None
+            plot_path_3d = None
+            
+            if len(self.var_names) == 2 and step7['optimal_point']:
+                # Visualización 2D (curvas de nivel)
+                if VISUALIZER_AVAILABLE:
+                    try:
+                        plot_path_2d = generate_lagrange_plot(
+                            objective_expr=self.objective_str,
+                            var_names=self.var_names,
+                            constraints=self.constraints_str,
+                            optimal_point=step7['optimal_point'],
+                            optimal_value=step7['optimal_value'],
+                            filename=f'lagrange_2d_{hash(self.objective_str) % 10000}.png'
+                        )
+                    except Exception as e:
+                        print(f"Error generando visualización 2D: {e}")
+                        plot_path_2d = None
+                
+                # Visualización 3D (superficie)
+                if VISUALIZER_3D_AVAILABLE:
+                    try:
+                        plot_path_3d = generate_lagrange_3d_plot(
+                            objective=self.objective_str,
+                            variables=self.var_names,
+                            constraints=self.constraints_str,
+                            optimal_point=step7['optimal_point'],
+                            optimal_value=step7['optimal_value'],
+                            filename=f'lagrange_3d_{hash(self.objective_str) % 10000}.png'
+                        )
+                    except Exception as e:
+                        print(f"Error generando visualización 3D: {e}")
+                        plot_path_3d = None
+            
             # Generar explicación completa
             explanation = self._generate_explanation(
-                step1, step2, step3, step4, step5, step6, step7
+                step1, step2, step3, step4, step5, step6, step7, plot_path_2d, plot_path_3d
             )
             
             # Serializar solución para JSON
@@ -349,7 +399,7 @@ class LagrangeSolver:
         }
     
     def _generate_explanation(
-        self, step1, step2, step3, step4, step5, step6, step7
+        self, step1, step2, step3, step4, step5, step6, step7, plot_path_2d=None, plot_path_3d=None
     ) -> str:
         """Genera la explicación pedagógica completa en Markdown."""
         lines = []
@@ -627,6 +677,51 @@ class LagrangeSolver:
                 val_str = str(step7['optimal_value'])
             
             lines.append(f"**Valor óptimo:** f(x*) = {val_str}")
+            lines.append("")
+        
+        # Visualizaciones geométricas (si están disponibles)
+        if plot_path_2d or plot_path_3d:
+            lines.append("---")
+            lines.append("")
+            lines.append("## 📊 VISUALIZACIONES GEOMÉTRICAS DEL MÉTODO DE LAGRANGE")
+            lines.append("")
+        
+        # Visualización 2D (curvas de nivel)
+        if plot_path_2d:
+            lines.append("### 📈 Visualización 2D - Curvas de Nivel")
+            lines.append("")
+            lines.append("**Interpretación gráfica en el plano:**")
+            lines.append("")
+            lines.append("El siguiente gráfico muestra:")
+            lines.append("- **Curvas de nivel** de la función objetivo f(x, y) en tonos de color")
+            lines.append("- **Restricción de igualdad** g(x, y) = 0 en rojo")
+            lines.append("- **Punto óptimo** marcado en verde donde ocurre la tangencia")
+            lines.append("")
+            # Imagen con ancho máximo para ajustarse al chat
+            lines.append(f'<img src="/{plot_path_2d}" alt="Visualización 2D de Lagrange" style="max-width: 100%; width: 600px; height: auto; display: block; margin: 20px auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />')
+            lines.append("")
+            lines.append("💡 **Observación clave:** El punto óptimo se encuentra donde una curva de nivel")
+            lines.append("de la función objetivo es **tangente** a la restricción.")
+            lines.append("")
+        
+        # Visualización 3D (superficie)
+        if plot_path_3d:
+            lines.append("### 🌐 Visualización 3D - Superficie")
+            lines.append("")
+            lines.append("**Interpretación gráfica en el espacio:**")
+            lines.append("")
+            lines.append("El siguiente gráfico tridimensional muestra:")
+            lines.append("- **Superficie de la función objetivo** f(x, y) en tonos viridis")
+            lines.append("- **Curva de restricción** g(x, y) = 0 proyectada sobre la superficie (rojo)")
+            lines.append("- **Punto óptimo** en verde, con proyección vertical al plano base")
+            lines.append("")
+            # Imagen 3D con ancho máximo
+            lines.append(f'<img src="/{plot_path_3d}" alt="Visualización 3D de Lagrange" style="max-width: 100%; width: 700px; height: auto; display: block; margin: 20px auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />')
+            lines.append("")
+            lines.append("💡 **Perspectiva 3D:** Esta vista permite apreciar cómo el punto óptimo se encuentra")
+            lines.append("sobre la superficie de la función objetivo, restringido a moverse únicamente a lo largo")
+            lines.append("de la curva roja (restricción). El óptimo ocurre donde el gradiente de f es perpendicular")
+            lines.append("a la curva de restricción.")
             lines.append("")
         
         lines.append("---")

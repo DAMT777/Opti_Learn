@@ -15,6 +15,10 @@ const sections = {
 };
 let lastPlotData = null;
 
+// ============================================================================
+// UTILIDADES DE RENDERIZADO
+// ============================================================================
+
 function renderMarkdownToHTML(text){
   try{
     if(window.marked){
@@ -26,6 +30,112 @@ function renderMarkdownToHTML(text){
     }
   }catch{}
   return String(text || '').replace(/</g,'&lt;');
+}
+
+function buildMetricsHtml(method, meta){
+  const formatVal = (v) => typeof v === 'number' ? v.toFixed(6) : (v ?? '-');
+  
+  switch(method){
+    case 'lagrange':
+      return `
+        <div class="metric">
+          <div class="metric__label">f*</div>
+          <div class="metric__value">${formatVal(meta.f_star)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">x*</div>
+          <div class="metric__value small">${JSON.stringify(meta.x_star)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">λ*</div>
+          <div class="metric__value small">${JSON.stringify(meta.lambda_star)}</div>
+        </div>
+      `;
+      
+    case 'differential':
+      return `
+        <div class="metric">
+          <div class="metric__label">Naturaleza</div>
+          <div class="metric__value">${meta.nature || '-'}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">Punto óptimo</div>
+          <div class="metric__value small">${JSON.stringify(meta.optimal_point)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">Valor óptimo</div>
+          <div class="metric__value">${formatVal(meta.optimal_value)}</div>
+        </div>
+      `;
+      
+    case 'kkt':
+      return `
+        <div class="metric">
+          <div class="metric__label">f*</div>
+          <div class="metric__value">${formatVal(meta.f_star)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">x*</div>
+          <div class="metric__value small">${JSON.stringify(meta.x_star)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">λ* (igual.)</div>
+          <div class="metric__value small">${JSON.stringify(meta.lambda_eq || [])}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">μ* (desig.)</div>
+          <div class="metric__value small">${JSON.stringify(meta.mu_ineq || [])}</div>
+        </div>
+      `;
+      
+    case 'gradient':
+      return `
+        <div class="metric">
+          <div class="metric__label">f*</div>
+          <div class="metric__value">${formatVal(meta.f_star)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">x*</div>
+          <div class="metric__value small">${JSON.stringify(meta.x_star)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">Iteraciones</div>
+          <div class="metric__value">${meta.iterations ?? '-'}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">‖∇f‖</div>
+          <div class="metric__value">${formatVal(meta.grad_norm)}</div>
+        </div>
+      `;
+      
+    case 'qp':
+      return `
+        <div class="metric">
+          <div class="metric__label">f*</div>
+          <div class="metric__value">${formatVal(meta.f_star)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">x*</div>
+          <div class="metric__value small">${JSON.stringify(meta.x_star)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">Tipo</div>
+          <div class="metric__value">${meta.problem_type || 'QP'}</div>
+        </div>
+      `;
+      
+    default:
+      return `
+        <div class="metric">
+          <div class="metric__label">f*</div>
+          <div class="metric__value">${formatVal(meta.f_star)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">x*</div>
+          <div class="metric__value small">${JSON.stringify(meta.x_star)}</div>
+        </div>
+      `;
+  }
 }
 
 function formatNumber(value){
@@ -81,6 +191,52 @@ function parseConstraints(txt){
     showMethodError('No se pudo interpretar el JSON de restricciones. Revisa comillas y llaves.');
     return [];
   }
+}
+
+// Parsea restricciones desde el contenedor dinámico de restricciones
+function parseConstraintsFromDynamicForm(){
+  const container = el('#constraintsContainer');
+  if(!container) return [];
+  
+  const rows = container.querySelectorAll('.constraint-row');
+  const constraints = [];
+  
+  rows.forEach(row => {
+    const kindSelect = row.querySelector('.constraint-kind');
+    const exprInput = row.querySelector('.constraint-input');
+    
+    if(exprInput){
+      const expr = exprInput.value.trim();
+      if(expr){
+        // Si hay selector de tipo, usar ese valor
+        let kind = 'eq';  // por defecto para Lagrange
+        if(kindSelect){
+          kind = kindSelect.value;  // 'le', 'ge', 'eq'
+        }
+        
+        constraints.push({
+          expr: expr,
+          kind: kind
+        });
+      }
+    }
+  });
+  
+  return constraints;
+}
+
+// Decide cuál parser de restricciones usar
+function getConstraints(){
+  const method = window.OPTI?.METHOD || '';
+  
+  // Si hay un contenedor dinámico, usarlo
+  const container = el('#constraintsContainer');
+  if(container && container.querySelectorAll('.constraint-row').length > 0){
+    return parseConstraintsFromDynamicForm();
+  }
+  
+  // Fallback al campo JSON
+  return parseConstraintsField();
 }
 
 function parseVectorInput(raw){
@@ -198,6 +354,147 @@ async function analyze(){
 }
 
 async function solve(){
+  showMethodError('');
+  const method = window.OPTI?.METHOD || 'gradient';
+  const objective = el('#objective')?.value.trim() || '';
+  const variables = (el('#variables')?.value || '').split(',').map(s=>s.trim()).filter(Boolean);
+  
+  if(!objective || !variables.length){
+    showMethodError('Debes ingresar la función objetivo y las variables.');
+    return;
+  }
+
+  // Determinar endpoint según método - TODOS los métodos usan endpoints pedagógicos
+  let endpoint = null;
+  let payload = {
+    objective_expr: objective,
+    variables: variables
+  };
+
+  // Usar el nuevo parser que detecta automáticamente el formato
+  const constraints = getConstraints();
+
+  switch(method){
+    case 'lagrange':
+      if(!constraints || constraints.length === 0){
+        showMethodError('El método de Lagrange requiere al menos una restricción de igualdad.');
+        return;
+      }
+      endpoint = '/api/methods/lagrange/solve';
+      payload.constraints = constraints;
+      break;
+      
+    case 'differential':
+      endpoint = '/api/methods/differential/solve';
+      break;
+      
+    case 'kkt':
+      if(!constraints || constraints.length === 0){
+        showMethodError('El método KKT requiere al menos una restricción.');
+        return;
+      }
+      endpoint = '/api/methods/kkt/solve';
+      payload.constraints = constraints;
+      // Verificar si es maximización
+      const isMax = el('#isMaximization')?.checked || false;
+      payload.maximize = isMax;
+      break;
+      
+    case 'gradient':
+      endpoint = '/api/methods/gradient/solve';
+      // Agregar parámetros opcionales si existen
+      const gradParams = collectOptionalParams();
+      if(gradParams.x0) payload.x0 = gradParams.x0;
+      if(gradParams.tol) payload.tol = gradParams.tol;
+      if(gradParams.max_iter) payload.max_iter = gradParams.max_iter;
+      break;
+      
+    case 'qp':
+      endpoint = '/api/methods/qp/solve';
+      if(constraints && constraints.length > 0){
+        payload.constraints = constraints;
+      }
+      break;
+      
+    default:
+      // Para cualquier otro método, usar el flujo original con persistencia
+      return solveWithPersistence();
+  }
+
+  // Mostrar loading
+  setResultSections(
+    '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>',
+    'Resolviendo paso a paso...',
+    ''
+  );
+
+  try{
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrftoken
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if(!response.ok || !result.success){
+      showMethodError(result.error || 'Error al resolver el problema.');
+      setResultSections('<div class="text-danger">No se obtuvo resultado.</div>', '', '');
+      return;
+    }
+
+    // Renderizar explicación pedagógica (Markdown con LaTeX)
+    const explanationHtml = renderMarkdownToHTML(result.explanation);
+    
+    // Construir métricas principales según el método
+    const meta = result.metadata || {};
+    let metricsHtml = buildMetricsHtml(method, meta);
+
+    // Mostrar resultados
+    setResultSections(metricsHtml, '', explanationHtml);
+    
+    // Renderizar gráficas si existen
+    if(meta.plot_2d_path || meta.plot_3d_path){
+      renderStaticPlots(meta.plot_2d_path, meta.plot_3d_path);
+    }
+
+    // Procesar LaTeX con MathJax
+    if(window.MathJax && window.MathJax.typesetPromise){
+      setTimeout(() => {
+        const resultDetails = el('#resultDetails');
+        if(resultDetails){
+          window.MathJax.typesetPromise([resultDetails]).catch(err => console.error('MathJax error:', err));
+        }
+      }, 100);
+    }
+
+    showMethodError('');
+  }catch(err){
+    console.error('Error al resolver:', err);
+    showMethodError('No se pudo ejecutar el solver. Intenta nuevamente.');
+    setResultSections('<div class="text-danger">Error de conexión.</div>', '', '');
+  }
+}
+
+// Función auxiliar para renderizar gráficas estáticas (PNG/JPG)
+function renderStaticPlots(plot2dPath, plot3dPath){
+  const plotContour = el('#plotContour');
+  const plotSurface = el('#plotSurface');
+  
+  if(plotContour && plot2dPath){
+    plotContour.innerHTML = `<img src="${plot2dPath}" alt="Gráfica 2D" style="max-width: 100%; height: auto; border-radius: 8px;">`;
+  }
+  
+  if(plotSurface && plot3dPath){
+    plotSurface.innerHTML = `<img src="${plot3dPath}" alt="Gráfica 3D" style="max-width: 100%; height: auto; border-radius: 8px;">`;
+  }
+}
+
+// Función original para métodos que requieren persistencia (gradient, kkt, qp)
+async function solveWithPersistence(){
   showMethodError('');
   const method = window.OPTI?.METHOD || 'gradient';
   const objective = el('#objective')?.value.trim() || '';
@@ -572,6 +869,10 @@ function resetForm(){
   resetOutputs();
 }
 
+// ============================================================================
+// INICIALIZACIÓN Y EVENTOS
+// ============================================================================
+
 document.addEventListener('DOMContentLoaded', ()=>{
   initTheme();
   const analyzeBtn = el('#analyzeBtn');
@@ -580,22 +881,158 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(analyzeBtn) analyzeBtn.addEventListener('click', analyze);
   if(solveBtn) solveBtn.addEventListener('click', solve);
   if(resetBtn) resetBtn.addEventListener('click', resetForm);
+  
   document.querySelectorAll('.form-control').forEach(inp=>{
     inp.addEventListener('focus', ()=> inp.scrollIntoView({block:'center', behavior:'smooth'}));
   });
+  
+  // =========================================================================
+  // Sistema de restricciones dinámicas
+  // =========================================================================
+  
+  const constraintsContainer = el('#constraintsContainer');
+  const addConstraintBtn = el('#addConstraintBtn');
+  
+  // Función para crear una nueva fila de restricción
+  function createConstraintRow(kind = 'eq', expr = ''){
+    const method = window.OPTI?.METHOD || '';
+    const showKind = ['kkt', 'qp'].includes(method);
+    
+    const row = document.createElement('div');
+    row.className = 'input-group mb-2 constraint-row';
+    
+    if(showKind){
+      // KKT/QP: mostrar selector de tipo
+      row.innerHTML = `
+        <select class="form-select constraint-kind" style="max-width: 100px;">
+          <option value="le" ${kind === 'le' ? 'selected' : ''}>≤ 0</option>
+          <option value="ge" ${kind === 'ge' ? 'selected' : ''}>≥ 0</option>
+          <option value="eq" ${kind === 'eq' ? 'selected' : ''}>= 0</option>
+        </select>
+        <input type="text" class="form-control constraint-input" placeholder="x + y - 1" value="${expr}">
+        <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
+      `;
+    } else {
+      // Lagrange: solo igualdad
+      row.innerHTML = `
+        <input type="text" class="form-control constraint-input" placeholder="x + y - 1" value="${expr}">
+        <span class="input-group-text">= 0</span>
+        <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
+      `;
+    }
+    
+    return row;
+  }
+  
+  // Agregar restricción
+  if(addConstraintBtn && constraintsContainer){
+    addConstraintBtn.addEventListener('click', ()=>{
+      const newRow = createConstraintRow();
+      constraintsContainer.appendChild(newRow);
+      const newInput = newRow.querySelector('.constraint-input');
+      if(newInput) newInput.focus();
+    });
+  }
+  
+  // Eliminar restricción (delegación de eventos)
+  if(constraintsContainer){
+    constraintsContainer.addEventListener('click', (e)=>{
+      const removeBtn = e.target.closest('.btn-remove-constraint');
+      if(removeBtn){
+        const row = removeBtn.closest('.constraint-row');
+        if(row){
+          // Mantener al menos una fila
+          const allRows = constraintsContainer.querySelectorAll('.constraint-row');
+          if(allRows.length > 1){
+            row.remove();
+          } else {
+            // Si es la última, solo limpiar el campo
+            const input = row.querySelector('.constraint-input');
+            if(input) input.value = '';
+          }
+        }
+      }
+    });
+  }
+  
+  // =========================================================================
+  // Manejador de ejemplos - soporta también restricciones
+  // =========================================================================
+  
   document.querySelectorAll('[data-example]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const expr = btn.getAttribute('data-example');
       const vars = btn.getAttribute('data-vars');
+      const constr = btn.getAttribute('data-constraints');
+      const x0Val = btn.getAttribute('data-x0');
+      
       const objective = el('#objective');
       const variables = el('#variables');
+      const constraints = el('#constraints');
+      const x0 = el('#x0');
+      
       if(objective && expr){
         objective.value = expr;
-        objective.focus();
       }
       if(variables && vars){
         variables.value = vars;
       }
+      
+      // Manejar restricciones JSON o dinámicas
+      if(constr){
+        try{
+          const parsedConstraints = JSON.parse(constr);
+          
+          // Si hay contenedor dinámico, llenar las filas
+          if(constraintsContainer){
+            // Limpiar contenedor
+            constraintsContainer.innerHTML = '';
+            
+            // Crear filas para cada restricción
+            parsedConstraints.forEach(c => {
+              const cExpr = typeof c === 'string' ? c : (c.expr || '');
+              const cKind = typeof c === 'object' ? (c.kind || 'eq') : 'eq';
+              const row = createConstraintRow(cKind, cExpr);
+              constraintsContainer.appendChild(row);
+            });
+            
+            // Si no hay restricciones, agregar una fila vacía
+            if(parsedConstraints.length === 0){
+              constraintsContainer.appendChild(createConstraintRow());
+            }
+          }
+          
+          // También llenar el campo JSON si existe
+          if(constraints){
+            constraints.value = JSON.stringify(parsedConstraints, null, 2);
+          }
+        } catch(e){
+          console.error('Error parseando restricciones del ejemplo:', e);
+        }
+      }
+      
+      if(x0 && x0Val){
+        x0.value = x0Val;
+      }
+      
+      // Mostrar notificación de ejemplo cargado
+      showMethodError('');
+      if(objective) objective.focus();
     });
   });
+  
+  // Auto-formatear JSON de restricciones al salir del campo
+  const constraintsField = el('#constraints');
+  if(constraintsField){
+    constraintsField.addEventListener('blur', ()=>{
+      const val = constraintsField.value.trim();
+      if(!val) return;
+      try{
+        const parsed = JSON.parse(val);
+        constraintsField.value = JSON.stringify(parsed, null, 2);
+      }catch{
+        // No hacer nada si no es JSON válido - se mostrará error al resolver
+      }
+    });
+  }
 });

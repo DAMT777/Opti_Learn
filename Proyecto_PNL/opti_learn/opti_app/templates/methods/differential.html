@@ -1,34 +1,50 @@
 {% extends "methods/base.html" %}
 
+{% block method_icon %}
+<i class="bi bi-calculator"></i>
+{% endblock %}
+
 {% block method_badge %}
-<div class="method-hero__badge"><i class="bi bi-calculator"></i> Sesión teórica</div>
+<div class="method-hero__badge badge-enhanced"><i class="bi bi-infinity"></i> Sin restricciones</div>
 {% endblock %}
 
 {% block method_description %}
-Practica derivadas, gradientes y clasificación de puntos críticos para problemas sin restricciones antes de pasar a métodos numéricos.
+<p class="mb-2">Encuentra puntos críticos usando <strong>derivadas parciales</strong> y clasifícalos con el <strong>Hessiano</strong>. Ideal para aprender los fundamentos del cálculo diferencial aplicado a optimización.</p>
+<div class="method-hero-tags">
+  <span class="chip"><i class="bi bi-vector-pen"></i> ∇f = 0</span>
+  <span class="chip"><i class="bi bi-grid-3x3"></i> Hessiano</span>
+  <span class="chip"><i class="bi bi-bullseye"></i> Min/Max/Silla</span>
+</div>
 {% endblock %}
 
 {% block method_stats %}
-<div><span>Tipo</span>Cálculo diferencial</div>
-<div><span>Aplicación</span>Problemas 1-2 variables</div>
-<div><span>Salida</span>Puntos críticos e interpretación</div>
+<div class="stat-item"><span class="stat-label">Tipo</span><span class="stat-value">Cálculo diferencial</span></div>
+<div class="stat-item"><span class="stat-label">Aplicación</span><span class="stat-value">1-3 variables</span></div>
+<div class="stat-item"><span class="stat-label">Salida</span><span class="stat-value">Puntos clasificados</span></div>
 {% endblock %}
 
 {% block method_form_required %}
-<div class="mb-2">
-  <label class="form-label">Función objetivo (SymPy)</label>
-  <textarea id="objective" class="form-control" rows="3" placeholder="x**3 - 3*x + 1"></textarea>
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-function"></i> Función objetivo (SymPy)</label>
+  <textarea id="objective" class="form-control form-control--enhanced" rows="2" placeholder="x**2 + y**2 - 2*x - 4*y + 5">x**2 + y**2 - 2*x - 4*y + 5</textarea>
+  <div class="form-hint">Ejemplo: <code>x**3 - 3*x</code> o <code>x**2 + y**2 - 2*x*y</code></div>
 </div>
-<div class="mb-2">
-  <label class="form-label">Variables (separadas por coma)</label>
-  <input id="variables" class="form-control" placeholder="x">
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-list-ul"></i> Variables (separadas por coma)</label>
+  <input id="variables" class="form-control form-control--enhanced" placeholder="x, y" value="x, y">
+</div>
+{% endblock %}
+
+{% block method_form_optional %}
+<div class="text-muted small">
+  <i class="bi bi-info-circle me-1"></i> Este método no requiere parámetros adicionales.
 </div>
 {% endblock %}
 
 {% block method_tips %}
-<li><i class="bi bi-braces"></i><span>Incluye todas las variables activas para construir el gradiente completo.</span></li>
-<li><i class="bi bi-bullseye"></i><span>El solver resaltará si cada punto crítico es mínimo, máximo o silla.</span></li>
-<li><i class="bi bi-clipboard-data"></i><span>Usa los resultados para validar tus derivaciones manuales.</span></li>
+<li><i class="bi bi-braces text-primary"></i><span>Usa notación SymPy: <code>x**2</code> para x², <code>sin(x)</code>, <code>exp(x)</code>.</span></li>
+<li><i class="bi bi-bullseye text-success"></i><span>El solver mostrará si cada punto crítico es <strong>mínimo</strong>, <strong>máximo</strong> o <strong>silla</strong>.</span></li>
+<li><i class="bi bi-clipboard-data text-info"></i><span>Para 2 variables verás gráficas de curvas de nivel y superficie 3D.</span></li>
 {% endblock %}
 
-{% block method_primary_button %}Resolver cálculo{% endblock %}
+{% block method_primary_button %}<i class="bi bi-play-fill me-1"></i> Resolver Diferencial{% endblock %}

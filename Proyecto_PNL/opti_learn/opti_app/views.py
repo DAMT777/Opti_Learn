@@ -406,3 +406,465 @@ class ProblemViewSet(viewsets.ModelViewSet):
 class SolutionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Solution.objects.all().order_by('-created_at')
     serializer_class = SolutionSerializer
+
+
+# ==============================================================================
+# ENDPOINTS DIRECTOS PARA FORMULARIOS MANUALES (SIN PERSISTENCIA EN BD)
+# ==============================================================================
+
+@api_view(["POST"])
+def solve_lagrange_manual(request):
+    """
+    Endpoint para resolver problemas de Lagrange desde formulario manual.
+    Recibe: objective_expr, variables, constraints (JSON)
+    Retorna: explanation (Markdown con LaTeX + imágenes), metadata
+    """
+    from .core.solver_lagrange import solve_with_lagrange_method
+    
+    try:
+        data = request.data
+        objective_expr = data.get('objective_expr', '').strip()
+        variables = data.get('variables', [])
+        constraints_raw = data.get('constraints', [])
+        
+        if not objective_expr:
+            return Response({'error': 'Función objetivo requerida'}, status=400)
+        if not variables:
+            return Response({'error': 'Variables requeridas'}, status=400)
+        if not constraints_raw:
+            return Response({'error': 'Restricciones requeridas'}, status=400)
+        
+        # Normalizar restricciones a lista de strings
+        constraints = []
+        for c in constraints_raw:
+            if isinstance(c, str):
+                # Formato antiguo: string directo
+                constraints.append(c.strip())
+            elif isinstance(c, dict):
+                # Formato nuevo: {expr: "...", kind: "eq"}
+                expr = c.get('expr', c.get('expression', '')).strip()
+                if expr:
+                    constraints.append(expr)
+            else:
+                continue
+        
+        if not constraints:
+            return Response({'error': 'No se encontraron restricciones válidas'}, status=400)
+        
+        # Llamar al solver pedagógico
+        result = solve_with_lagrange_method(
+            objective_expression=objective_expr,
+            variable_names=variables,
+            equality_constraints=constraints
+        )
+        
+        return Response({
+            'success': True,
+            'explanation': result.get('explanation', ''),
+            'metadata': {
+                'x_star': result.get('x_star'),
+                'f_star': result.get('f_star'),
+                'lambda_star': result.get('lambda_star'),
+                'critical_points': result.get('critical_points', []),
+                'plot_2d_path': result.get('plot_2d_path'),
+                'plot_3d_path': result.get('plot_3d_path'),
+            }
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': f'Error al resolver: {str(e)}'
+        }, status=500)
+
+
+@api_view(["POST"])
+def solve_differential_manual(request):
+    """
+    Endpoint para resolver problemas de cálculo diferencial desde formulario manual.
+    Recibe: objective_expr, variables
+    Retorna: explanation (Markdown con LaTeX + imágenes), metadata
+    """
+    from .core.solver_differential import solve_with_differential_method
+    
+    try:
+        data = request.data
+        objective_expr = data.get('objective_expr', '').strip()
+        variables = data.get('variables', [])
+        
+        if not objective_expr:
+            return Response({'error': 'Función objetivo requerida'}, status=400)
+        if not variables:
+            return Response({'error': 'Variables requeridas'}, status=400)
+        
+        # Llamar al solver pedagógico
+        result = solve_with_differential_method(
+            objective_expression=objective_expr,
+            variable_names=variables
+        )
+        
+        return Response({
+            'success': True,
+            'explanation': result.get('explanation', ''),
+            'metadata': {
+                'critical_points': result.get('critical_points', []),
+                'optimal_point': result.get('optimal_point'),
+                'optimal_value': result.get('optimal_value'),
+                'nature': result.get('nature'),
+                'plot_2d_path': result.get('plot_2d_path'),
+                'plot_3d_path': result.get('plot_3d_path'),
+            }
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': f'Error al resolver: {str(e)}'
+        }, status=500)
+
+
+@api_view(["POST"])
+def solve_kkt_manual(request):
+    """
+    Endpoint para resolver problemas con condiciones KKT desde formulario manual.
+    Recibe: objective_expr, variables, constraints (JSON con kind: eq/ineq/le/ge)
+    Retorna: explanation (Markdown con LaTeX), metadata
+    """
+    from .core.solver_kkt import KKTSolver
+    
+    try:
+        data = request.data
+        objective_expr = data.get('objective_expr', '').strip()
+        variables = data.get('variables', [])
+        constraints = data.get('constraints', [])
+        # Soportar ambos nombres para maximización
+        is_maximization = data.get('maximize', data.get('is_maximization', False))
+        
+        if not objective_expr:
+            return Response({'error': 'Función objetivo requerida'}, status=400)
+        if not variables:
+            return Response({'error': 'Variables requeridas'}, status=400)
+        
+        # Preparar restricciones para el solver KKT
+        kkt_constraints = []
+        for c in constraints:
+            expr = c.get('expr', c.get('expression', ''))
+            kind = c.get('kind', 'ineq')
+            rhs = c.get('rhs', 0)
+            
+            # Normalizar expresiones con operadores de comparación
+            if '>=' in expr:
+                parts = expr.split('>=')
+                expr = f"({parts[0].strip()}) - ({parts[1].strip()})"
+                kind = 'ge'
+            elif '<=' in expr:
+                parts = expr.split('<=')
+                expr = f"({parts[0].strip()}) - ({parts[1].strip()})"
+                kind = 'le'
+            elif '=' in expr and kind == 'eq':
+                parts = expr.split('=')
+                if len(parts) == 2:
+                    expr = f"({parts[0].strip()}) - ({parts[1].strip()})"
+            
+            kkt_constraints.append({
+                'expression': expr,
+                'kind': kind,
+                'rhs': rhs
+            })
+        
+        # Llamar al solver KKT pedagógico
+        solver = KKTSolver(
+            objective_expr=objective_expr,
+            variables=variables,
+            constraints=kkt_constraints,
+            is_maximization=is_maximization
+        )
+        result = solver.solve()
+        
+        return Response({
+            'success': result.get('status') == 'success',
+            'explanation': result.get('explanation', ''),
+            'metadata': {
+                'x_star': result.get('solution'),
+                'f_star': result.get('optimal_value'),
+                'candidates': result.get('candidates', []),
+                'is_maximization': is_maximization,
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        return Response({
+            'success': False,
+            'error': f'Error al resolver: {str(e)}',
+            'traceback': traceback.format_exc()
+        }, status=500)
+
+
+@api_view(["POST"])
+def solve_gradient_manual(request):
+    """
+    Endpoint para resolver problemas con Gradiente Descendente desde formulario manual.
+    Recibe: objective_expr, variables, x0 (opcional), tol (opcional), max_iter (opcional)
+    Retorna: explanation (Markdown con LaTeX + gráficas), metadata
+    """
+    from .core.solver_gradiente import resolver_descenso_gradiente
+    
+    try:
+        data = request.data
+        objective_expr = data.get('objective_expr', '').strip()
+        variables = data.get('variables', [])
+        x0 = data.get('x0', None)
+        tol = float(data.get('tol', 1e-6))
+        max_iter = int(data.get('max_iter', 200))
+        
+        if not objective_expr:
+            return Response({'error': 'Función objetivo requerida'}, status=400)
+        if not variables:
+            return Response({'error': 'Variables requeridas'}, status=400)
+        
+        # Llamar al solver de Gradiente
+        result = resolver_descenso_gradiente(
+            expresion_objetivo=objective_expr,
+            nombres_variables=variables,
+            x_inicial=x0,
+            tolerancia=tol,
+            max_iteraciones=max_iter
+        )
+        
+        # Generar explicación pedagógica
+        explanation = _generate_gradient_explanation(
+            objective_expr, variables, result, x0, tol, max_iter
+        )
+        
+        return Response({
+            'success': result.get('status') == 'ok',
+            'explanation': explanation,
+            'metadata': {
+                'x_star': result.get('x_star'),
+                'f_star': result.get('f_star'),
+                'iterations': result.get('iterations', []),
+                'iterations_count': len(result.get('iterations', [])),
+                'plot_data': result.get('plot_data'),
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        return Response({
+            'success': False,
+            'error': f'Error al resolver: {str(e)}',
+            'traceback': traceback.format_exc()
+        }, status=500)
+
+
+def _generate_gradient_explanation(objective_expr, variables, result, x0, tol, max_iter):
+    """Genera explicación pedagógica paso a paso para Gradiente Descendente."""
+    import sympy as sp
+    
+    lines = []
+    
+    # Título
+    lines.append("# 📉 MÉTODO DE GRADIENTE DESCENDENTE")
+    lines.append("")
+    lines.append("**Optimización iterativa siguiendo la dirección de máximo descenso**")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    
+    # PASO 1: Presentación
+    lines.append("## PASO 1: PRESENTACIÓN DEL PROBLEMA")
+    lines.append("")
+    vars_str = ', '.join(variables)
+    lines.append(f"**Función objetivo a minimizar:**")
+    lines.append("")
+    lines.append(f"$$f({vars_str}) = {objective_expr}$$")
+    lines.append("")
+    lines.append(f"**Variables:** ${vars_str}$")
+    lines.append("")
+    
+    x0_str = str(x0) if x0 else "origen (ceros)"
+    lines.append(f"**Punto inicial:** $x_0 = {x0_str}$")
+    lines.append(f"**Tolerancia:** $\\epsilon = {tol}$")
+    lines.append(f"**Iteraciones máximas:** {max_iter}")
+    lines.append("")
+    
+    # PASO 2: El método
+    lines.append("## PASO 2: EL ALGORITMO")
+    lines.append("")
+    lines.append("El Gradiente Descendente sigue estos pasos en cada iteración $k$:")
+    lines.append("")
+    lines.append("1. **Calcular el gradiente** $\\nabla f(x_k)$ en el punto actual")
+    lines.append("2. **Verificar convergencia**: Si $\\|\\nabla f(x_k)\\| < \\epsilon$, terminar")
+    lines.append("3. **Búsqueda de línea**: Encontrar el paso óptimo $\\alpha_k$")
+    lines.append("4. **Actualizar posición**: $x_{k+1} = x_k - \\alpha_k \\nabla f(x_k)$")
+    lines.append("5. **Repetir** hasta convergencia o agotar iteraciones")
+    lines.append("")
+    
+    lines.append("### 🔍 Búsqueda de Línea (Golden Section)")
+    lines.append("")
+    lines.append("Para encontrar el paso óptimo $\\alpha_k$, resolvemos:")
+    lines.append("")
+    lines.append("$$\\alpha_k = \\arg\\min_{\\alpha > 0} f(x_k - \\alpha \\nabla f(x_k))$$")
+    lines.append("")
+    lines.append("Usamos el método de **sección dorada** que divide el intervalo")
+    lines.append("en proporción áurea $\\phi = \\frac{1+\\sqrt{5}}{2}$ para encontrar el mínimo.")
+    lines.append("")
+    
+    # PASO 3: Ejecución
+    iterations = result.get('iterations', [])
+    lines.append("## PASO 3: EJECUCIÓN DEL ALGORITMO")
+    lines.append("")
+    lines.append(f"**Total de iteraciones ejecutadas:** {len(iterations)}")
+    lines.append("")
+    
+    # Mostrar algunas iteraciones clave
+    lines.append("### Tabla de Iteraciones")
+    lines.append("")
+    lines.append("| k | $x_k$ | $f(x_k)$ | $\\|\\nabla f\\|$ | $\\alpha_k$ |")
+    lines.append("|---|-------|----------|-----------------|-------------|")
+    
+    iters_to_show = min(8, len(iterations))
+    for i in range(iters_to_show):
+        it = iterations[i]
+        x_k = it.get('x_k', [])
+        x_k_str = ', '.join([f"{v:.4f}" for v in x_k]) if x_k else '-'
+        f_k = it.get('f_k', 0)
+        grad_norm = it.get('grad_norm', 0)
+        alpha = it.get('alpha', 0)
+        lines.append(f"| {it.get('k', i)} | ({x_k_str}) | {f_k:.6f} | {grad_norm:.6f} | {alpha:.6f} |")
+    
+    if len(iterations) > iters_to_show:
+        lines.append(f"| ... | ... | ... | ... | ... |")
+        # Mostrar última iteración
+        last_it = iterations[-1]
+        x_k = last_it.get('x_k', [])
+        x_k_str = ', '.join([f"{v:.4f}" for v in x_k]) if x_k else '-'
+        lines.append(f"| {last_it.get('k', len(iterations)-1)} | ({x_k_str}) | {last_it.get('f_k', 0):.6f} | {last_it.get('grad_norm', 0):.6f} | {last_it.get('alpha', 0):.6f} |")
+    
+    lines.append("")
+    
+    # PASO 4: Resultado
+    lines.append("## PASO 4: RESULTADO FINAL")
+    lines.append("")
+    
+    x_star = result.get('x_star', [])
+    f_star = result.get('f_star', 0)
+    
+    lines.append("### 🎯 Punto Óptimo Encontrado")
+    lines.append("")
+    
+    if x_star:
+        for i, (var, val) in enumerate(zip(variables, x_star)):
+            lines.append(f"$$${var}^* = {val:.6f}$$")
+    
+    lines.append("")
+    lines.append("### 📊 Valor Mínimo")
+    lines.append("")
+    lines.append(f"$$f(x^*) = {f_star:.6f}$$")
+    lines.append("")
+    
+    # PASO 5: Interpretación
+    lines.append("## PASO 5: INTERPRETACIÓN PEDAGÓGICA")
+    lines.append("")
+    lines.append("### ¿Qué hicimos?")
+    lines.append("")
+    lines.append("1. **Partimos de un punto inicial** y calculamos el gradiente")
+    lines.append("2. **El gradiente indica la dirección de máximo crecimiento**, así que vamos en sentido opuesto (descenso)")
+    lines.append("3. **Optimizamos el tamaño del paso** para avanzar lo máximo posible en cada iteración")
+    lines.append("4. **Repetimos hasta que el gradiente sea casi cero** (punto crítico)")
+    lines.append("")
+    
+    lines.append("### 💡 Intuición Geométrica")
+    lines.append("")
+    lines.append("Imagina una bola rodando por una superficie. La bola siempre rueda en la dirección")
+    lines.append("de mayor pendiente hacia abajo. El gradiente descendente imita este comportamiento,")
+    lines.append("pero optimizando el tamaño de cada \"paso\" para converger más rápido.")
+    lines.append("")
+    
+    # Notas sobre convergencia
+    final_grad = iterations[-1].get('grad_norm', 0) if iterations else 0
+    if final_grad < tol:
+        lines.append("✅ **El algoritmo convergió exitosamente** (gradiente menor que la tolerancia)")
+    else:
+        lines.append("⚠️ **El algoritmo terminó por límite de iteraciones** (puede requerir más pasos)")
+    lines.append("")
+    
+    lines.append("---")
+    lines.append("")
+    lines.append("### ✓ Procedimiento completado")
+    lines.append("")
+    
+    return "\n".join(lines)
+
+
+@api_view(["POST"])
+def solve_qp_manual(request):
+    """
+    Endpoint para resolver problemas de Programación Cuadrática desde formulario manual.
+    Recibe: objective_expr, variables, constraints (JSON)
+    Retorna: explanation (Markdown con LaTeX), metadata
+    """
+    from .core.solver_cuadratico import resolver_qp
+    
+    try:
+        data = request.data
+        objective_expr = data.get('objective_expr', '').strip()
+        variables = data.get('variables', [])
+        constraints = data.get('constraints', [])
+        
+        if not objective_expr:
+            return Response({'error': 'Función objetivo requerida'}, status=400)
+        if not variables:
+            return Response({'error': 'Variables requeridas'}, status=400)
+        
+        # Preparar restricciones
+        qp_constraints = []
+        for c in constraints:
+            expr = c.get('expr', c.get('expression', ''))
+            kind = c.get('kind', 'ineq')
+            
+            # Normalizar expresiones
+            if '>=' in expr:
+                parts = expr.split('>=')
+                expr = f"({parts[0].strip()}) - ({parts[1].strip()})"
+                kind = 'ge'
+            elif '<=' in expr:
+                parts = expr.split('<=')
+                expr = f"({parts[0].strip()}) - ({parts[1].strip()})"
+                kind = 'le'
+            elif '=' in expr and kind == 'eq':
+                parts = expr.split('=')
+                if len(parts) == 2:
+                    expr = f"({parts[0].strip()}) - ({parts[1].strip()})"
+            
+            qp_constraints.append({
+                'expr': expr,
+                'kind': kind
+            })
+        
+        # Llamar al solver QP
+        result = resolver_qp(
+            objective_expr=objective_expr,
+            variables=variables,
+            constraints=qp_constraints
+        )
+        
+        return Response({
+            'success': result.get('status') in ['success', 'educational_guide', 'optimal'],
+            'explanation': result.get('explanation', ''),
+            'metadata': {
+                'x_star': result.get('x_star'),
+                'f_star': result.get('f_star'),
+                'status': result.get('status'),
+                'steps': result.get('steps', []),
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        return Response({
+            'success': False,
+            'error': f'Error al resolver: {str(e)}',
+            'traceback': traceback.format_exc()
+        }, status=500)

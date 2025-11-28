@@ -6,6 +6,7 @@
     <title>OptiLearn – {{ title }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="/static/opti_app/css/app_v2.css" rel="stylesheet">
     <!-- Markdown + Sanitizer -->
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
@@ -19,122 +20,241 @@
       window.OPTI = { CSRF: "{{ csrf_token }}", METHOD: "{{ method_key }}" };
     </script>
   </head>
-  <body class="bg-gradient theme-dark method-page">
+  <body class="bg-gradient theme-dark method-page enhanced-ui">
+    <!-- Animated Background -->
+    <div class="animated-bg">
+      <div class="gradient-orb gradient-orb--1"></div>
+      <div class="gradient-orb gradient-orb--2"></div>
+      <div class="gradient-orb gradient-orb--3"></div>
+    </div>
+    
     <div class="d-flex min-vh-100 app-shell">
       <div class="flex-grow-1 d-flex flex-column">
-        <main class="px-4 pt-2 d-flex flex-column gap-3 method-layout">
-          <section class="card-soft p-0 flex-grow-1 w-100">
-            <div class="px-3 py-2 d-flex align-items-center gap-2 chat-header">
-              <button class="menu-btn" id="menuBtn" title="Menú">
+        <main class="px-4 pt-3 d-flex flex-column gap-4 method-layout">
+          <section class="method-container glass-card p-0 flex-grow-1 w-100">
+            <!-- Header mejorado -->
+            <div class="method-header px-4 py-3 d-flex align-items-center gap-3">
+              <button class="menu-btn menu-btn--enhanced" id="menuBtn" title="Menú">
                 <span class="inner"></span>
               </button>
-              <h6 class="m-0">{{ title }}</h6>
-              <div class="ms-auto"></div>
+              <div class="method-header__title">
+                <h5 class="m-0 fw-semibold">{{ title }}</h5>
+                <span class="method-header__subtitle text-muted small">Solver Interactivo</span>
+              </div>
+              <div class="ms-auto d-flex align-items-center gap-2">
+                <span class="status-indicator status-indicator--ready">
+                  <i class="bi bi-circle-fill"></i> Listo
+                </span>
+              </div>
             </div>
-            <div class="p-3 d-flex flex-column gap-3">
-              <div class="method-hero">
-                {% block method_badge %}
-                <div class="method-hero__badge"><i class="bi bi-sliders"></i> Método</div>
-                {% endblock %}
-                <h5 class="mb-1 mt-2">{{ title }}</h5>
-                <p class="mb-0 small">{% block method_description %}Describe aquí el objetivo del método.{% endblock %}</p>
-                <div class="method-hero__stats">
-                  {% block method_stats %}
-                  <div><span>Tipo</span>General</div>
-                  <div><span>Datos</span>Función y variables</div>
-                  <div><span>Salida</span>Punto óptimo</div>
+            
+            <div class="p-4 d-flex flex-column gap-4">
+              <!-- Hero Section mejorada -->
+              <div class="method-hero method-hero--enhanced">
+                <div class="method-hero__icon">
+                  {% block method_icon %}
+                  <i class="bi bi-graph-up-arrow"></i>
                   {% endblock %}
+                </div>
+                <div class="method-hero__content">
+                  {% block method_badge %}
+                  <div class="method-hero__badge badge-enhanced"><i class="bi bi-sliders"></i> Método</div>
+                  {% endblock %}
+                  <h4 class="method-hero__title mt-2 mb-2">{{ title }}</h4>
+                  <div class="method-hero__description">
+                    {% block method_description %}Describe aquí el objetivo del método.{% endblock %}
+                  </div>
+                  <div class="method-hero__stats stats-enhanced mt-3">
+                    {% block method_stats %}
+                    <div class="stat-item"><span class="stat-label">Tipo</span><span class="stat-value">General</span></div>
+                    <div class="stat-item"><span class="stat-label">Datos</span><span class="stat-value">Función y variables</span></div>
+                    <div class="stat-item"><span class="stat-label">Salida</span><span class="stat-value">Punto óptimo</span></div>
+                    {% endblock %}
+                  </div>
                 </div>
               </div>
               {% block method_body %}
-              <div class="method-grid">
-                <section class="card-soft method-card p-3 method-card--form">
-                  <h6 class="mb-2">Campos obligatorios</h6>
-                  {% block method_form_required %}
-                  <div class="mb-2">
-                    <label class="form-label">Función objetivo (SymPy)</label>
-                    <textarea id="objective" class="form-control" rows="3" placeholder="(x-1)**2 + (y-2)**2"></textarea>
+              <div class="method-grid method-grid--enhanced">
+                <!-- Formulario Principal -->
+                <section class="glass-card method-card method-card--form p-4 fade-in-up">
+                  <div class="card-header-enhanced mb-3">
+                    <div class="card-icon"><i class="bi bi-pencil-square"></i></div>
+                    <h6 class="mb-0">Datos del problema</h6>
                   </div>
-                  <div class="mb-2">
-                    <label class="form-label">Variables (separadas por coma)</label>
-                    <input id="variables" class="form-control" placeholder="x,y">
+                  {% block method_form_required %}
+                  <div class="form-group-enhanced mb-3">
+                    <label class="form-label form-label--enhanced">
+                      <i class="bi bi-function"></i> Función objetivo (SymPy)
+                    </label>
+                    <textarea id="objective" class="form-control form-control--enhanced" rows="3" placeholder="(x-1)**2 + (y-2)**2"></textarea>
+                    <div class="form-hint">Use sintaxis SymPy: <code>x**2</code>, <code>sin(x)</code>, <code>exp(x)</code></div>
+                  </div>
+                  <div class="form-group-enhanced mb-3">
+                    <label class="form-label form-label--enhanced">
+                      <i class="bi bi-list-ul"></i> Variables (separadas por coma)
+                    </label>
+                    <input id="variables" class="form-control form-control--enhanced" placeholder="x,y">
                   </div>
                   {% endblock %}
-                  <div class="mb-3 mt-3">
-                    <h6 class="mb-2">Campos opcionales</h6>
-                    {% block method_form_optional %}
-                    <div class="mb-2">
-                      <label class="form-label">Vector inicial x<sub>0</sub> (ej. [0.5, -1])</label>
-                      <input id="x0" class="form-control" placeholder="[0.5, -1]">
-                    </div>
-                    <div class="row g-2">
-                      <div class="col-md-6">
-                        <label class="form-label">Tolerancia</label>
-                        <input id="tol" class="form-control" placeholder="1e-6">
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label">Iteraciones máximas</label>
-                        <input id="maxIter" class="form-control" placeholder="200">
-                      </div>
-                    </div>
-                    {% endblock %}
+                  
+                  <div class="form-divider my-4">
+                    <span>Parámetros opcionales</span>
                   </div>
-                  <div class="d-flex gap-2 flex-wrap">
-                    <button id="analyzeBtn" class="btn btn-primary">Analizar</button>
-                    <button id="solveBtn" class="btn btn-outline-primary">
+                  
+                  {% block method_form_optional %}
+                  <div class="form-group-enhanced mb-3">
+                    <label class="form-label form-label--enhanced">
+                      <i class="bi bi-geo-alt"></i> Vector inicial x<sub>0</sub>
+                    </label>
+                    <input id="x0" class="form-control form-control--enhanced" placeholder="[0.5, -1]">
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <div class="form-group-enhanced">
+                        <label class="form-label form-label--enhanced">
+                          <i class="bi bi-bullseye"></i> Tolerancia
+                        </label>
+                        <input id="tol" class="form-control form-control--enhanced" placeholder="1e-6">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group-enhanced">
+                        <label class="form-label form-label--enhanced">
+                          <i class="bi bi-arrow-repeat"></i> Iteraciones máx.
+                        </label>
+                        <input id="maxIter" class="form-control form-control--enhanced" placeholder="200">
+                      </div>
+                    </div>
+                  </div>
+                  {% endblock %}
+                  
+                  <div class="action-buttons mt-4">
+                    <button id="solveBtn" class="btn btn-primary btn-primary--glow btn-lg">
+                      <i class="bi bi-play-fill"></i>
                       {% block method_primary_button %}Resolver{% endblock %}
                     </button>
-                    <button id="resetBtn" class="btn btn-outline-light">Limpiar formulario</button>
+                    <button id="resetBtn" class="btn btn-outline-secondary">
+                      <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                    </button>
                   </div>
                 </section>
 
-                <section class="card-soft method-card p-3">
-                  <h6 class="mb-2">Guía rápida</h6>
-                  <ul class="method-tips">
+                <!-- Guía rápida -->
+                <section class="glass-card method-card method-card--tips p-4 fade-in-up" style="animation-delay: 0.1s;">
+                  <div class="card-header-enhanced mb-3">
+                    <div class="card-icon card-icon--info"><i class="bi bi-lightbulb"></i></div>
+                    <h6 class="mb-0">Guía rápida</h6>
+                  </div>
+                  <ul class="method-tips method-tips--enhanced">
                     {% block method_tips %}
                     <li><i class="bi bi-lightbulb"></i><span>Aquí puedes añadir consejos útiles para el usuario.</span></li>
                     {% endblock %}
                   </ul>
                 </section>
 
-                <section class="card-soft method-card method-card--errors p-3">
-                  <h6 class="mb-2">Validaciones</h6>
-                  <div id="methodErrors" class="method-errors text-muted small">Completa la función objetivo y las variables para comenzar.</div>
+                <!-- Validaciones -->
+                <section class="glass-card method-card method-card--errors p-4 fade-in-up" style="animation-delay: 0.2s;">
+                  <div class="card-header-enhanced mb-3">
+                    <div class="card-icon card-icon--warning"><i class="bi bi-shield-check"></i></div>
+                    <h6 class="mb-0">Validaciones</h6>
+                  </div>
+                  <div id="methodErrors" class="validation-message text-muted">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Completa la función objetivo y las variables para comenzar.
+                  </div>
                 </section>
 
-                <section class="card-soft method-card method-card--result p-3">
-                  <h6 class="mb-3">Análisis previo</h6>
-                  <div id="resultInterpretation" class="method-result-interpretation small text-muted"></div>
-                  <hr>
-                  <h6 class="mb-2">Procedimiento y datos intermedios</h6>
-                  <div id="resultDetails" class="method-result-details small text-muted"></div>
-                  <hr>
-                  <h6 class="mb-2">Resultados principales</h6>
-                  <div id="resultMain" class="method-result-main"></div>
+                <!-- Resultados Principales -->
+                <section class="glass-card method-card method-card--result p-4 fade-in-up" style="animation-delay: 0.3s;">
+                  <div class="card-header-enhanced mb-3">
+                    <div class="card-icon card-icon--success"><i class="bi bi-trophy"></i></div>
+                    <h6 class="mb-0">Solución paso a paso</h6>
+                  </div>
+                  
+                  <div class="result-section mb-4">
+                    <div class="result-section__header">
+                      <i class="bi bi-lightbulb"></i>
+                      <span>Interpretación</span>
+                    </div>
+                    <div id="resultInterpretation" class="result-content text-muted">
+                      La interpretación aparecerá aquí después de resolver.
+                    </div>
+                  </div>
+                  
+                  <div class="result-section mb-4">
+                    <div class="result-section__header">
+                      <i class="bi bi-list-task"></i>
+                      <span>Procedimiento detallado</span>
+                    </div>
+                    <div id="resultDetails" class="result-content result-content--procedure text-muted">
+                      El procedimiento paso a paso aparecerá aquí.
+                    </div>
+                  </div>
+                  
+                  <div class="result-section">
+                    <div class="result-section__header">
+                      <i class="bi bi-bullseye"></i>
+                      <span>Resultados principales</span>
+                    </div>
+                    <div id="resultMain" class="result-content result-content--main">
+                      <div class="placeholder-result">
+                        <i class="bi bi-calculator"></i>
+                        <p>Los resultados aparecerán aquí</p>
+                      </div>
+                    </div>
+                  </div>
                 </section>
 
-                <section class="card-soft method-card method-card--iterations p-3">
-                  <h6 class="mb-3">Iteraciones / sistema resuelto</h6>
-                  <div class="table-responsive">
+                <!-- Iteraciones -->
+                <section class="glass-card method-card method-card--iterations p-4 fade-in-up" style="animation-delay: 0.4s;">
+                  <div class="card-header-enhanced mb-3">
+                    <div class="card-icon card-icon--primary"><i class="bi bi-table"></i></div>
+                    <h6 class="mb-0">Iteraciones / Sistema resuelto</h6>
+                  </div>
+                  <div class="table-responsive table-enhanced">
                     <table class="table table-sm align-middle">
                       <thead>
-                        <tr><th>k</th><th>f_k</th><th>||g||</th><th>α_k</th></tr>
+                        <tr><th>k</th><th>f<sub>k</sub></th><th>||∇f||</th><th>α<sub>k</sub></th></tr>
                       </thead>
-                      <tbody id="iters"></tbody>
+                      <tbody id="iters">
+                        <tr class="placeholder-row"><td colspan="4" class="text-center text-muted">Sin iteraciones aún</td></tr>
+                      </tbody>
                     </table>
                   </div>
-                  <div class="line-search-details mt-3">
-                    <h6 class="mb-2">Busqueda de linea (alpha_k)</h6>
-                    <div id="lineSearchDetails" class="small text-muted">Sin datos de busqueda de linea.</div>
+                  <div class="line-search-details mt-4">
+                    <div class="result-section__header">
+                      <i class="bi bi-search"></i>
+                      <span>Búsqueda de línea (α<sub>k</sub>)</span>
+                    </div>
+                    <div id="lineSearchDetails" class="result-content text-muted">Sin datos de búsqueda de línea.</div>
                   </div>
                 </section>
 
-                <section class="card-soft method-card method-card--graphs p-3">
-                  <h6 class="mb-2">Gráficas</h6>
-                  <div class="method-graphs">
-                    <div class="method-graph" id="plotContour"><span>Curvas de nivel disponibles tras resolver.</span></div>
-                    <div class="method-graph" id="plotSurface"><span>Superficie 3D disponible tras resolver.</span></div>
-                    <div class="method-graph" id="plotFx"><span>Evolución de f(x<sub>k</sub>) disponible tras resolver.</span></div>
+                <!-- Gráficas -->
+                <section class="glass-card method-card method-card--graphs p-4 fade-in-up" style="animation-delay: 0.5s;">
+                  <div class="card-header-enhanced mb-3">
+                    <div class="card-icon card-icon--accent"><i class="bi bi-graph-up"></i></div>
+                    <h6 class="mb-0">Visualizaciones</h6>
+                  </div>
+                  <div class="method-graphs method-graphs--enhanced">
+                    <div class="method-graph method-graph--enhanced" id="plotContour">
+                      <div class="graph-placeholder">
+                        <i class="bi bi-grid-3x3"></i>
+                        <span>Curvas de nivel</span>
+                      </div>
+                    </div>
+                    <div class="method-graph method-graph--enhanced" id="plotSurface">
+                      <div class="graph-placeholder">
+                        <i class="bi bi-box"></i>
+                        <span>Superficie 3D</span>
+                      </div>
+                    </div>
+                    <div class="method-graph method-graph--enhanced" id="plotFx">
+                      <div class="graph-placeholder">
+                        <i class="bi bi-graph-down"></i>
+                        <span>Evolución f(x<sub>k</sub>)</span>
+                      </div>
+                    </div>
                   </div>
                 </section>
               </div>
@@ -145,32 +265,93 @@
       </div>
     </div>
 
-    <div id="sideBackdrop" class="overlay-backdrop" role="button" aria-label="Cerrar menú" tabindex="-1"></div>
-    <aside id="sidePanel" class="overlay-sidebar" aria-label="Menú lateral">
-      <div class="overlay-header p-3 d-flex align-items-center justify-content-between">
-        <div>
-          <div class="brand"><i class="bi bi-hexagon me-2"></i>OptiLearn</div>
-          <small class="text-dark-50">Optimización No Lineal</small>
+    <div id="sideBackdrop" class="overlay-backdrop overlay-backdrop--enhanced" role="button" aria-label="Cerrar menú" tabindex="-1"></div>
+    <aside id="sidePanel" class="overlay-sidebar overlay-sidebar--enhanced" aria-label="Menú lateral">
+      <div class="overlay-header p-4 d-flex align-items-center justify-content-between">
+        <div class="brand-section">
+          <div class="brand brand--enhanced">
+            <div class="brand-icon"><i class="bi bi-hexagon"></i></div>
+            <div class="brand-text">
+              <span class="brand-name">OptiLearn</span>
+              <span class="brand-tagline">Optimización Interactiva</span>
+            </div>
+          </div>
         </div>
-        <button class="btn btn-icon" id="menuClose" title="Cerrar"><i class="bi bi-x-lg"></i></button>
+        <button class="btn btn-icon btn-icon--close" id="menuClose" title="Cerrar"><i class="bi bi-x-lg"></i></button>
       </div>
       <hr class="overlay-sep my-0">
-      <div class="overlay-body p-3">
-        <div class="mb-2 small text-dark-50">Navegación</div>
-        <ul class="list-unstyled small nav-vertical method-menu m-0">
-          <li><a class="method-menu__link{% if method_key == 'assistant' %} active{% endif %}" href="/"><i class="bi bi-chat-dots"></i>Asistente educativo</a></li>
-          <li><a class="method-menu__link{% if method_key == 'gradient' %} active{% endif %}" href="/methods/gradient"><i class="bi bi-sliders"></i>Gradiente</a></li>
-          <li><a class="method-menu__link{% if method_key == 'lagrange' %} active{% endif %}" href="/methods/lagrange"><i class="bi bi-flag"></i>Lagrange</a></li>
-          <li><a class="method-menu__link{% if method_key == 'kkt' %} active{% endif %}" href="/methods/kkt"><i class="bi bi-shield-check"></i>Condiciones KKT</a></li>
-          <li><a class="method-menu__link{% if method_key == 'qp' %} active{% endif %}" href="/methods/qp"><i class="bi bi-graph-up-arrow"></i>Programación cuadrática</a></li>
-          <li><a class="method-menu__link{% if method_key == 'differential' %} active{% endif %}" href="/methods/differential"><i class="bi bi-calculator"></i>Cálculo diferencial</a></li>
+      <div class="overlay-body p-4">
+        <div class="nav-section-title mb-3">
+          <i class="bi bi-compass"></i> Navegación
+        </div>
+        <ul class="list-unstyled nav-vertical method-menu method-menu--enhanced m-0">
+          <li>
+            <a class="method-menu__link{% if method_key == 'assistant' %} active{% endif %}" href="/">
+              <div class="menu-icon"><i class="bi bi-chat-dots"></i></div>
+              <div class="menu-content">
+                <span class="menu-title">Asistente IA</span>
+                <span class="menu-subtitle">Chat educativo</span>
+              </div>
+            </a>
+          </li>
+          <li>
+            <a class="method-menu__link{% if method_key == 'gradient' %} active{% endif %}" href="/methods/gradient">
+              <div class="menu-icon"><i class="bi bi-sliders"></i></div>
+              <div class="menu-content">
+                <span class="menu-title">Gradiente</span>
+                <span class="menu-subtitle">Descenso por gradiente</span>
+              </div>
+            </a>
+          </li>
+          <li>
+            <a class="method-menu__link{% if method_key == 'lagrange' %} active{% endif %}" href="/methods/lagrange">
+              <div class="menu-icon"><i class="bi bi-flag"></i></div>
+              <div class="menu-content">
+                <span class="menu-title">Lagrange</span>
+                <span class="menu-subtitle">Multiplicadores</span>
+              </div>
+            </a>
+          </li>
+          <li>
+            <a class="method-menu__link{% if method_key == 'kkt' %} active{% endif %}" href="/methods/kkt">
+              <div class="menu-icon"><i class="bi bi-shield-check"></i></div>
+              <div class="menu-content">
+                <span class="menu-title">Condiciones KKT</span>
+                <span class="menu-subtitle">Karush-Kuhn-Tucker</span>
+              </div>
+            </a>
+          </li>
+          <li>
+            <a class="method-menu__link{% if method_key == 'qp' %} active{% endif %}" href="/methods/qp">
+              <div class="menu-icon"><i class="bi bi-graph-up-arrow"></i></div>
+              <div class="menu-content">
+                <span class="menu-title">Prog. Cuadrática</span>
+                <span class="menu-subtitle">Optimización QP</span>
+              </div>
+            </a>
+          </li>
+          <li>
+            <a class="method-menu__link{% if method_key == 'differential' %} active{% endif %}" href="/methods/differential">
+              <div class="menu-icon"><i class="bi bi-calculator"></i></div>
+              <div class="menu-content">
+                <span class="menu-title">Cálculo Diferencial</span>
+                <span class="menu-subtitle">Análisis clásico</span>
+              </div>
+            </a>
+          </li>
         </ul>
       </div>
-      <div class="overlay-footer mt-auto p-3 small d-flex align-items-center gap-2">
-        <div class="form-check form-switch d-flex align-items-center gap-2 m-0">
-          <i class="bi bi-moon"></i>
-          <input class="form-check-input" type="checkbox" id="themeToggle">
-          <label class="form-check-label mb-0" for="themeToggle">Modo oscuro</label>
+      <div class="overlay-footer mt-auto p-4">
+        <div class="theme-toggle-enhanced d-flex align-items-center gap-3">
+          <div class="theme-icon theme-icon--moon"><i class="bi bi-moon-stars"></i></div>
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="themeToggle">
+            <label class="form-check-label" for="themeToggle">Modo oscuro</label>
+          </div>
+          <div class="theme-icon theme-icon--sun"><i class="bi bi-sun"></i></div>
+        </div>
+        <div class="footer-info mt-3 text-center small text-muted">
+          <span>OptiLearn v2.0</span> · <span>Optimización No Lineal</span>
         </div>
       </div>
     </aside>

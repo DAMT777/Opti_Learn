@@ -1,39 +1,86 @@
 {% extends "methods/base.html" %}
 
+{% block method_icon %}
+<i class="bi bi-graph-up-arrow"></i>
+{% endblock %}
+
 {% block method_badge %}
-<div class="method-hero__badge"><i class="bi bi-graph-up-arrow"></i> Programación cuadrática</div>
+<div class="method-hero__badge badge-enhanced"><i class="bi bi-graph-up-arrow"></i> Objetivo cuadrático</div>
 {% endblock %}
 
 {% block method_description %}
-Define un objetivo cuadrático y restricciones lineales para evaluar la trayectoria óptima. Ideal para problemas convexos o con penalizaciones cuadráticas.
+<p class="mb-2">Resuelve problemas con <strong>función objetivo cuadrática</strong> y restricciones lineales. Ideal para problemas de cartera, asignación de recursos y control óptimo.</p>
+<div class="method-hero-tags">
+  <span class="chip"><i class="bi bi-grid-3x3"></i> x'Qx + c'x</span>
+  <span class="chip"><i class="bi bi-chevron-double-down"></i> Ax ≤ b</span>
+  <span class="chip"><i class="bi bi-check2-circle"></i> Convexo</span>
+</div>
 {% endblock %}
 
 {% block method_stats %}
-<div><span>Tipo</span>QP Convexo</div>
-<div><span>Restricciones</span>Lineales</div>
-<div><span>Salida</span>x*, f* y estado</div>
+<div class="stat-item"><span class="stat-label">Tipo</span><span class="stat-value">QP Convexo</span></div>
+<div class="stat-item"><span class="stat-label">Restricciones</span><span class="stat-value">Lineales</span></div>
+<div class="stat-item"><span class="stat-label">Salida</span><span class="stat-value">x*, f* paso a paso</span></div>
 {% endblock %}
 
 {% block method_form_required %}
-<div class="mb-2">
-  <label class="form-label">Función objetivo (SymPy)</label>
-  <textarea id="objective" class="form-control" rows="3" placeholder="0.5*x**2 + 12*y**2 - 6*x + 4*y + 8"></textarea>
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-function"></i> Función objetivo cuadrática (SymPy)</label>
+  <textarea id="objective" class="form-control form-control--enhanced" rows="2" placeholder="x**2 + y**2 - 6*x - 4*y + 13">x**2 + y**2 - 6*x - 4*y + 13</textarea>
+  <div class="form-hint">Ejemplo: <code>0.5*x**2 + y**2 - x*y + 2*x</code></div>
 </div>
-<div class="mb-2">
-  <label class="form-label">Variables (separadas por coma)</label>
-  <input id="variables" class="form-control" placeholder="x,y">
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-list-ul"></i> Variables (separadas por coma)</label>
+  <input id="variables" class="form-control form-control--enhanced" placeholder="x, y" value="x, y">
 </div>
-<div class="mb-3">
-  <label class="form-label">Restricciones lineales (JSON)</label>
-  <textarea id="constraints" class="form-control" rows="2" placeholder='[{"kind":"ineq","expr":"x>=0"},{"kind":"ineq","expr":"y>=0"}]'></textarea>
-  <div class="form-text text-muted">Pronto podrás cargar matrices H y G directamente.</div>
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-sliders2"></i> Restricciones lineales</label>
+  <div id="constraintsContainer" class="constraints-builder">
+    <div class="input-group mb-2 constraint-row">
+      <select class="form-select form-control--enhanced constraint-kind" style="max-width: 110px;">
+        <option value="le" selected>≤ 0</option>
+        <option value="ge">≥ 0</option>
+        <option value="eq">= 0</option>
+      </select>
+      <input type="text" class="form-control form-control--enhanced constraint-input" placeholder="x + y - 10" value="x + y - 10">
+      <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
+    </div>
+    <div class="input-group mb-2 constraint-row">
+      <select class="form-select form-control--enhanced constraint-kind" style="max-width: 110px;">
+        <option value="le">≤ 0</option>
+        <option value="ge" selected>≥ 0</option>
+        <option value="eq">= 0</option>
+      </select>
+      <input type="text" class="form-control form-control--enhanced constraint-input" placeholder="x" value="x">
+      <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
+    </div>
+    <div class="input-group mb-2 constraint-row">
+      <select class="form-select form-control--enhanced constraint-kind" style="max-width: 110px;">
+        <option value="le">≤ 0</option>
+        <option value="ge" selected>≥ 0</option>
+        <option value="eq">= 0</option>
+      </select>
+      <input type="text" class="form-control form-control--enhanced constraint-input" placeholder="y" value="y">
+      <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
+    </div>
+  </div>
+  <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addConstraintBtn">
+    <i class="bi bi-plus-circle"></i> Agregar restricción
+  </button>
+  <div class="form-hint mt-2">Restricciones lineales: <code>Ax ≤ b</code>, <code>Ax = b</code>, o <code>x ≥ 0</code></div>
+</div>
+{% endblock %}
+
+{% block method_form_optional %}
+<div class="text-muted small">
+  <i class="bi bi-cpu me-1"></i> Este método detecta automáticamente si Q es definida positiva.
 </div>
 {% endblock %}
 
 {% block method_tips %}
-<li><i class="bi bi-grid"></i><span>Si aún no tienes matrices, usa la forma simbólica equivalente para describir H y q.</span></li>
-<li><i class="bi bi-geo-alt"></i><span>Verifica que H sea semidefinida positiva para garantizar mínimos globales.</span></li>
-<li><i class="bi bi-diagram-3"></i><span>Declara cada restricción lineal como igualdad o desigualdad según corresponda.</span></li>
+<li><i class="bi bi-grid text-primary"></i><span>La matriz <strong>Q (Hessiano)</strong> debe ser semidefinida positiva para garantizar mínimo global.</span></li>
+<li><i class="bi bi-geo-alt text-warning"></i><span>El solver usará <strong>KKT</strong> internamente para encontrar la solución óptima.</span></li>
+<li><i class="bi bi-diagram-3 text-success"></i><span>Verás el análisis de <strong>convexidad</strong> y clasificación del problema.</span></li>
 {% endblock %}
 
-{% block method_primary_button %}Resolver QP{% endblock %}
+{% block method_primary_button %}<i class="bi bi-play-fill me-1"></i> Resolver QP{% endblock %}

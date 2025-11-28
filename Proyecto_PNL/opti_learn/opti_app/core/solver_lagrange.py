@@ -106,6 +106,7 @@ class LagrangeSolver:
         self.hessian = None
         self.hessian_eigenvalues = []
         self.point_nature = ""
+        self.critical_points = []  # Lista de puntos críticos encontrados
         
     def solve(self) -> Dict[str, Any]:
         """Ejecuta el proceso completo de solución."""
@@ -179,6 +180,12 @@ class LagrangeSolver:
                 'status': 'success',
                 'explanation': explanation,
                 'solution': solution_serializable,
+                'x_star': self.optimal_solution.get('x') if self.optimal_solution else None,
+                'f_star': self.optimal_solution.get('f') if self.optimal_solution else None,
+                'lambda_star': self.optimal_solution.get('lambda') if self.optimal_solution else None,
+                'critical_points': [serialize_for_json(pt) for pt in self.critical_points],
+                'plot_2d_path': plot_path_2d,
+                'plot_3d_path': plot_path_3d,
                 'steps': {
                     'step1': serialize_for_json(step1),
                     'step2': serialize_for_json(step2),
@@ -300,6 +307,16 @@ class LagrangeSolver:
         
         self.solutions = solutions
         
+        # Guardar puntos críticos (solo las coordenadas x, no λ)
+        self.critical_points = []
+        for sol in solutions:
+            point = {}
+            for var in self.vars:
+                if var in sol:
+                    point[str(var)] = sol[var]
+            if point:
+                self.critical_points.append(point)
+        
         # Seleccionar primera solución como óptima (simplificación pedagógica)
         if solutions:
             self.optimal_solution = solutions[0]
@@ -307,7 +324,8 @@ class LagrangeSolver:
         return {
             'solutions': solutions,
             'n_solutions': len(solutions),
-            'optimal': self.optimal_solution
+            'optimal': self.optimal_solution,
+            'critical_points': self.critical_points
         }
     
     def _step6_compute_hessian(self) -> Dict[str, Any]:

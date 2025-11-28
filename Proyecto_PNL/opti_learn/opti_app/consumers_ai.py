@@ -669,51 +669,97 @@ def solve_differential_payload(
     recomendacion: Dict[str, Any],
     method_note: str | None = None,
 ) -> tuple[str, Dict[str, Any]]:
+    """
+    Resuelve problemas de optimización sin restricciones usando Cálculo Diferencial.
+    Usa el nuevo solver pedagógico completo con visualizaciones.
+    """
+    from opti_app.core.solver_differential import solve_with_differential_method
+    
     variables = meta.get('variables') or problema.get('variables') or []
     if not variables:
         raise ValueError('No se detectaron variables para derivar.')
+    
+    objective_expr = problema.get('objective_expr')
+    if not objective_expr:
+        raise ValueError('No se pudo identificar la función objetivo.')
+    
     try:
-        sym_vars = [sp.Symbol(v, real=True) for v in variables]
-        expr_sym = sp.sympify(problema['objective_expr'], locals={v.name: v for v in sym_vars})
-        grad = [sp.diff(expr_sym, v) for v in sym_vars]
-        hess = sp.hessian(expr_sym, sym_vars)
+        # Usar el nuevo solver pedagógico completo
+        result = solve_with_differential_method(
+            objective_expression=objective_expr,
+            variable_names=variables
+        )
+        
+        if result['status'] == 'success':
+            explanation = result['explanation']
+        else:
+            explanation = result.get('explanation', 'Error en la solución')
+        
+        reply_payload: Dict[str, Any] = {
+            'analysis': {
+                'variables': variables,
+                'objective_expr': objective_expr,
+                'constraints': meta.get('constraints_normalized'),
+                'recommendation': recomendacion,
+            },
+            'plot': {'type': 'embedded', 'reason': 'included_in_explanation'},
+            'solver': {
+                'method': 'differential',
+                'status': result['status'],
+                'solution': result.get('solution'),
+                'steps': result.get('steps'),
+            },
+        }
+        
+        return explanation, reply_payload
+        
     except Exception as exc:
-        raise ValueError(f'No se pudo derivar la funcion objetivo: {exc}') from exc
+        # Fallback al método original en caso de error
+        import traceback
+        traceback.print_exc()
+        
+        try:
+            sym_vars = [sp.Symbol(v, real=True) for v in variables]
+            expr_sym = sp.sympify(problema['objective_expr'], locals={v.name: v for v in sym_vars})
+            grad = [sp.diff(expr_sym, v) for v in sym_vars]
+            hess = sp.hessian(expr_sym, sym_vars)
+        except Exception as exc2:
+            raise ValueError(f'No se pudo derivar la funcion objetivo: {exc2}') from exc2
 
-    grad_strings = [str(g) for g in grad]
-    hess_strings = [[str(entry) for entry in row] for row in (hess.tolist() if hasattr(hess, 'tolist') else [[hess]])]
-    lines = []
-    lines.append('### Laboratorio de calculo diferencial')
-    lines.append(f"- f({', '.join(variables)}) = {problema.get('objective_expr')}")
-    lines.append(f'- Gradiente simbolico: {grad_strings}')
-    lines.append(f'- Hessiano: {hess_strings}')
-    if method_note:
-        lines.append(f"- Nota: {method_note}")
-    else:
-        lines.append(f"- Motivo: {recomendacion.get('rationale')}")
-    lines.append('')
-    lines.append('#### Procedimiento sugerido')
-    lines.append('1. Calcular gradiente y Hessiano simbolicos (como arriba).')
-    lines.append('2. Evaluar gradiente en los puntos de interes para verificar estacionaridad.')
-    lines.append('3. Revisar definitud del Hessiano para clasificar el punto.')
-    lines.append('4. Utilizar la informacion para alimentar metodos numericos si es necesario.')
+        grad_strings = [str(g) for g in grad]
+        hess_strings = [[str(entry) for entry in row] for row in (hess.tolist() if hasattr(hess, 'tolist') else [[hess]])]
+        lines = []
+        lines.append('### Laboratorio de calculo diferencial (modo fallback)')
+        lines.append(f"- f({', '.join(variables)}) = {problema.get('objective_expr')}")
+        lines.append(f'- Gradiente simbolico: {grad_strings}')
+        lines.append(f'- Hessiano: {hess_strings}')
+        if method_note:
+            lines.append(f"- Nota: {method_note}")
+        else:
+            lines.append(f"- Motivo: {recomendacion.get('rationale')}")
+        lines.append('')
+        lines.append('#### Procedimiento sugerido')
+        lines.append('1. Calcular gradiente y Hessiano simbolicos (como arriba).')
+        lines.append('2. Evaluar gradiente en los puntos de interes para verificar estacionaridad.')
+        lines.append('3. Revisar definitud del Hessiano para clasificar el punto.')
+        lines.append('4. Utilizar la informacion para alimentar metodos numericos si es necesario.')
 
-    reply_payload: Dict[str, Any] = {
-        'analysis': {
-            'variables': variables,
-            'objective_expr': meta.get('objective_expr'),
-            'constraints': meta.get('constraints_normalized'),
-            'recommendation': recomendacion,
-        },
-        'plot': {'type': 'none', 'reason': 'symbolic_only'},
-        'solver': {
-            'method': 'differential',
-            'status': 'analysis_only',
-            'gradient': grad_strings,
-            'hessian': hess_strings,
-        },
-    }
-    return "\n".join(lines), reply_payload
+        reply_payload: Dict[str, Any] = {
+            'analysis': {
+                'variables': variables,
+                'objective_expr': meta.get('objective_expr'),
+                'constraints': meta.get('constraints_normalized'),
+                'recommendation': recomendacion,
+            },
+            'plot': {'type': 'none', 'reason': 'symbolic_only'},
+            'solver': {
+                'method': 'differential',
+                'status': 'analysis_only',
+                'gradient': grad_strings,
+                'hessian': hess_strings,
+            },
+        }
+        return "\n".join(lines), reply_payload
 
 
 def solve_structured_problem(payload: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:

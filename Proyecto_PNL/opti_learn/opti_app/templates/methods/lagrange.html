@@ -1,39 +1,64 @@
 {% extends "methods/base.html" %}
 
+{% block method_icon %}
+<i class="bi bi-flag"></i>
+{% endblock %}
+
 {% block method_badge %}
-<div class="method-hero__badge"><i class="bi bi-flag"></i> Restricciones de igualdad</div>
+<div class="method-hero__badge badge-enhanced"><i class="bi bi-lock-fill"></i> Restricciones de igualdad</div>
 {% endblock %}
 
 {% block method_description %}
-Modela problemas con ecuaciones de igualdad. El solver construirá el Lagrangiano y mostrará cómo los multiplicadores equilibran las restricciones.
+<p class="mb-2">Optimiza funciones sujetas a restricciones de igualdad usando <strong>multiplicadores de Lagrange</strong>. El solver mostrará <strong>paso a paso</strong> cómo construir la Lagrangiana y encontrar el punto óptimo.</p>
+<div class="method-hero-tags">
+  <span class="chip"><i class="bi bi-braces"></i> g(x)=0</span>
+  <span class="chip"><i class="bi bi-lightning"></i> Multiplicadores λ</span>
+  <span class="chip"><i class="bi bi-mortarboard"></i> Pedagógico</span>
+</div>
 {% endblock %}
 
 {% block method_stats %}
-<div><span>Tipo</span>Lagrange</div>
-<div><span>Variables</span>f(x) + ecuaciones g(x)=0</div>
-<div><span>Salida</span>x*, λ y verificación</div>
+<div class="stat-item"><span class="stat-label">Tipo</span><span class="stat-value">Lagrange</span></div>
+<div class="stat-item"><span class="stat-label">Variables</span><span class="stat-value">f(x) + g(x)=0</span></div>
+<div class="stat-item"><span class="stat-label">Salida</span><span class="stat-value">x*, λ*, f*</span></div>
 {% endblock %}
 
 {% block method_form_required %}
-<div class="mb-2">
-  <label class="form-label">Función objetivo (SymPy)</label>
-  <textarea id="objective" class="form-control" rows="3" placeholder="x**2 + y**2"></textarea>
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-function"></i> Función objetivo (SymPy)</label>
+  <textarea id="objective" class="form-control form-control--enhanced" rows="2" placeholder="x**2 + y**2">x**2 + y**2</textarea>
+  <div class="form-hint">Ejemplo: <code>x**2 + y**2</code> o <code>x*y + z</code></div>
 </div>
-<div class="mb-2">
-  <label class="form-label">Variables (separadas por coma)</label>
-  <input id="variables" class="form-control" placeholder="x,y">
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-list-ul"></i> Variables (separadas por coma)</label>
+  <input id="variables" class="form-control form-control--enhanced" placeholder="x, y" value="x, y">
 </div>
-<div class="mb-2">
-  <label class="form-label">Restricciones de igualdad (JSON)</label>
-  <textarea id="constraints" class="form-control" rows="2" placeholder='[{"kind":"eq","expr":"x + y - 1"}]'></textarea>
-  <div class="form-text text-muted">Usa <code>kind: "eq"</code> para cada ecuación.</div>
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-lock"></i> Restricciones de igualdad</label>
+  <div id="constraintsContainer" class="constraints-builder">
+    <div class="input-group mb-2 constraint-row">
+      <input type="text" class="form-control form-control--enhanced constraint-input" placeholder="x + y - 1" value="x + y - 1">
+      <span class="input-group-text">= 0</span>
+      <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
+    </div>
+  </div>
+  <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addConstraintBtn">
+    <i class="bi bi-plus-circle"></i> Agregar restricción
+  </button>
+  <div class="form-hint mt-2">Cada restricción se iguala a cero: g(x) = 0</div>
+</div>
+{% endblock %}
+
+{% block method_form_optional %}
+<div class="text-muted small">
+  <i class="bi bi-info-circle me-1"></i> Este método no requiere parámetros adicionales.
 </div>
 {% endblock %}
 
 {% block method_tips %}
-<li><i class="bi bi-diagram-3"></i><span>Debes incluir tantas ecuaciones como restricciones tenga el problema.</span></li>
-<li><i class="bi bi-layout-text-sidebar"></i><span>El resultado muestra si el gradiente queda alineado con la combinación lineal de las restricciones.</span></li>
-<li><i class="bi bi-search"></i><span>Utiliza el análisis para verificar si hay redundancia o falta de ecuaciones.</span></li>
+<li><i class="bi bi-lightbulb text-warning"></i><span>El número de restricciones debe ser <strong>menor</strong> que el número de variables.</span></li>
+<li><i class="bi bi-diagram-3 text-info"></i><span>El multiplicador <strong>λ</strong> indica la sensibilidad del óptimo respecto a cambios en la restricción.</span></li>
+<li><i class="bi bi-graph-up text-success"></i><span>Para 2 variables, verás gráficas de curvas de nivel y superficie 3D.</span></li>
 {% endblock %}
 
-{% block method_primary_button %}Resolver Lagrange{% endblock %}
+{% block method_primary_button %}<i class="bi bi-play-fill me-1"></i> Resolver Lagrange{% endblock %}

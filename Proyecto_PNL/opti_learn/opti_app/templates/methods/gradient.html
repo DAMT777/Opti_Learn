@@ -1,139 +1,66 @@
 ﻿{% extends "methods/base.html" %}
 
+{% block method_icon %}
+<i class="bi bi-arrow-down-right-circle"></i>
+{% endblock %}
+
 {% block method_badge %}
-<div class="method-hero__badge"><i class="bi bi-sliders"></i> Gradiente descendente</div>
+<div class="method-hero__badge badge-enhanced"><i class="bi bi-sliders"></i> Método iterativo</div>
 {% endblock %}
 
 {% block method_description %}
-<div class="gradient-hero-text">
-  <div>
-    <p class="mb-2">Minimiza funciones suaves partiendo de un punto inicial y deja que el algoritmo trace la ruta hacia el mínimo aplicando búsqueda de línea.</p>
-    <div class="gradient-hero-tags">
-      <span class="chip">Convexo</span>
-      <span class="chip">Aprendizaje</span>
-      <span class="chip">Armijo</span>
-    </div>
-  </div>
-  <div class="gradient-hero-instructions">
-    <h6 class="small text-uppercase text-muted mb-2">Instrucciones rápidas</h6>
-    <ol>
-      <li>Escribe la función objetivo en notación SymPy y lista las variables.</li>
-      <li>Agrega (opcional) un vector inicial, tolerancia e iteraciones máximas.</li>
-      <li>Haz clic en <strong>Analizar</strong> y luego en <strong>Resolver gradiente</strong> para ejecutar el método.</li>
-    </ol>
-  </div>
+<p class="mb-2">Minimiza funciones suaves partiendo de un punto inicial y siguiendo la <strong>dirección de máximo descenso</strong>. Verás la trayectoria paso a paso hacia el mínimo.</p>
+<div class="method-hero-tags">
+  <span class="chip"><i class="bi bi-arrow-down"></i> ∇f(x)</span>
+  <span class="chip"><i class="bi bi-search"></i> Búsqueda de línea</span>
+  <span class="chip"><i class="bi bi-arrow-repeat"></i> Iterativo</span>
 </div>
 {% endblock %}
 
 {% block method_stats %}
-<div><span>Modo</span>Descenso iterativo</div>
-<div><span>Entradas</span>f(x), variables, x<sub>0</sub></div>
-<div><span>Salida</span>Trayectoria, x*, f*</div>
+<div class="stat-item"><span class="stat-label">Modo</span><span class="stat-value">Descenso iterativo</span></div>
+<div class="stat-item"><span class="stat-label">Entradas</span><span class="stat-value">f(x), x₀, tol</span></div>
+<div class="stat-item"><span class="stat-label">Salida</span><span class="stat-value">Trayectoria, x*, f*</span></div>
 {% endblock %}
 
-{% block method_body %}
-<div class="gradient-shell">
-  <aside class="gradient-column gradient-column--inputs">
-    <div class="card-soft gradient-card gradient-card--form">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h6 class="text-uppercase text-muted mb-0">Configuración del problema</h6>
-        <button class="btn btn-link btn-sm text-decoration-none" type="button" id="resetBtn">Limpiar</button>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Función objetivo (SymPy)</label>
-        <textarea id="objective" class="form-control" rows="3" placeholder="(x-1)**2 + (y-2)**2"></textarea>
-      </div>
-      <div class="mb-4">
-        <label class="form-label">Variables (separadas por coma)</label>
-        <input id="variables" class="form-control" placeholder="x,y">
-      </div>
-      <div class="gradient-form__optional">
-        <h6 class="text-uppercase text-muted mb-3">Campos opcionales</h6>
-        <div class="mb-2">
-          <label class="form-label">Vector inicial x<sub>0</sub> (ej. [0.5, -1])</label>
-          <input id="x0" class="form-control" placeholder="[0.5, -1]">
-        </div>
-        <div class="row g-2">
-          <div class="col-md-6">
-            <label class="form-label">Tolerancia</label>
-            <input id="tol" class="form-control" placeholder="1e-6">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Iteraciones máximas</label>
-            <input id="maxIter" class="form-control" placeholder="200">
-          </div>
-        </div>
-      </div>
-      <div class="d-flex flex-wrap gap-2 mt-4">
-        <button id="analyzeBtn" class="btn btn-primary flex-grow-1"><i class="bi bi-search"></i> Analizar</button>
-        <button id="solveBtn" class="btn btn-outline-primary flex-grow-1"><i class="bi bi-caret-right-fill"></i> Resolver</button>
-      </div>
-      <div id="methodErrors" class="method-errors text-muted small mt-3">Completa la función objetivo y las variables para comenzar.</div>
+{% block method_form_required %}
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-function"></i> Función objetivo (SymPy)</label>
+  <textarea id="objective" class="form-control form-control--enhanced" rows="2" placeholder="(x-1)**2 + (y-2)**2">(x-1)**2 + (y-2)**2</textarea>
+  <div class="form-hint">Ejemplo: <code>(x-1)**2 + (y-2)**2</code> tiene mínimo en (1, 2)</div>
+</div>
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-list-ul"></i> Variables (separadas por coma)</label>
+  <input id="variables" class="form-control form-control--enhanced" placeholder="x, y" value="x, y">
+</div>
+{% endblock %}
+
+{% block method_form_optional %}
+<div class="form-group-enhanced mb-3">
+  <label class="form-label form-label--enhanced"><i class="bi bi-geo-alt"></i> Punto inicial x₀</label>
+  <input id="x0" class="form-control form-control--enhanced" placeholder="[0, 0]" value="[0, 0]">
+  <div class="form-hint">Vector de inicio, ej: <code>[0, 0]</code> o <code>[1.5, -2]</code></div>
+</div>
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="form-group-enhanced">
+      <label class="form-label form-label--enhanced"><i class="bi bi-bullseye"></i> Tolerancia</label>
+      <input id="tol" class="form-control form-control--enhanced" placeholder="1e-6" value="1e-6">
     </div>
-    <div class="card-soft gradient-card">
-      <h6 class="text-uppercase text-muted mb-2">Consejos y atajos</h6>
-      <ul class="method-tips">
-        <li><i class="bi bi-lightning-charge"></i><span>Empieza con valores iniciales cercanos al óptimo para acelerar la convergencia.</span></li>
-        <li><i class="bi bi-graph-up"></i><span>Verifica que la función sea diferenciable en el dominio estudiado.</span></li>
-        <li><i class="bi bi-magic"></i><span>Usa operaciones SymPy como <code>sin(x)</code> o <code>exp(y)</code>.</span></li>
-      </ul>
-      <div class="gradient-samples mt-3">
-        <p class="small text-muted mb-1">Ejemplos rápidos:</p>
-        <button type="button" class="chip chip--ghost" data-example="(x-1)**2 + (y+2)**2" data-vars="x,y">bowl(x,y)</button>
-        <button type="button" class="chip chip--ghost" data-example="x**2 + y**2 + z**2" data-vars="x,y,z">sphere(x,y,z)</button>
-      </div>
+  </div>
+  <div class="col-md-6">
+    <div class="form-group-enhanced">
+      <label class="form-label form-label--enhanced"><i class="bi bi-arrow-repeat"></i> Iteraciones máx.</label>
+      <input id="maxIter" class="form-control form-control--enhanced" placeholder="200" value="200">
     </div>
-  </aside>
-
-  <div class="gradient-column gradient-column--output">
-    <section class="card-soft gradient-output gradient-output--summary">
-      <div class="gradient-metrics" id="resultMain"></div>
-      <div class="gradient-output__details">
-        <div>
-          <h6>Análisis previo</h6>
-          <div id="resultInterpretation" class="method-result-interpretation small text-muted"></div>
-        </div>
-        <div>
-          <h6>Procedimiento</h6>
-          <div id="resultDetails" class="method-result-details small text-muted"></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="card-soft gradient-output">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h6 class="mb-0">Iteraciones</h6>
-        <span class="badge text-bg-light text-dark">Gradiente + Armijo</span>
-      </div>
-      <div class="table-responsive gradient-iterations-table">
-        <table class="table table-sm align-middle">
-          <thead>
-            <tr><th>k</th><th>f<sub>k</sub></th><th>||∇f||</th><th>α<sub>k</sub></th></tr>
-          </thead>
-          <tbody id="iters"></tbody>
-        </table>
-      </div>
-      <div class="line-search-details mt-3">
-        <h6 class="mb-2">Detalle búsqueda de línea</h6>
-        <div id="lineSearchDetails" class="small text-muted">Sin datos de búsqueda de línea.</div>
-      </div>
-    </section>
-
-    <section class="card-soft gradient-output gradient-output--plots">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h6 class="mb-0">Visualizaciones interactivas</h6>
-        <div class="gradient-legend">
-          <span class="chip chip--mini">Curvas</span>
-          <span class="chip chip--mini">Superficie</span>
-          <span class="chip chip--mini">f(x<sub>k</sub>)</span>
-        </div>
-      </div>
-      <div class="method-graphs gradient-graphs">
-        <div class="method-graph" id="plotContour"><span>Curvas de nivel disponibles tras resolver.</span></div>
-        <div class="method-graph" id="plotSurface"><span>Superficie 3D disponible tras resolver.</span></div>
-        <div class="method-graph" id="plotFx"><span>Evolución de f(x<sub>k</sub>) disponible tras resolver.</span></div>
-      </div>
-    </section>
   </div>
 </div>
 {% endblock %}
+
+{% block method_tips %}
+<li><i class="bi bi-lightning-charge text-warning"></i><span>Empieza con valores iniciales <strong>cercanos al óptimo</strong> para acelerar la convergencia.</span></li>
+<li><i class="bi bi-graph-up text-success"></i><span>Verifica que la función sea <strong>diferenciable</strong> en el dominio estudiado.</span></li>
+<li><i class="bi bi-magic text-info"></i><span>Usa funciones SymPy como <code>sin(x)</code>, <code>exp(y)</code>, <code>log(x)</code>.</span></li>
+{% endblock %}
+
+{% block method_primary_button %}<i class="bi bi-play-fill me-1"></i> Resolver Gradiente{% endblock %}

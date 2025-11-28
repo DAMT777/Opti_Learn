@@ -57,7 +57,28 @@ $$C = \begin{bmatrix} 0, 0, 0 \end{bmatrix}$$
 
 ## PASO 4: SISTEMA KKT
 
-**Condiciones KKT:**
+**Sistema KKT del Problema:**
+
+📌 **Matriz KKT estándar**
+
+Para problemas QP con restricciones de igualdad, la matriz KKT tiene la estructura:
+
+$$\begin{bmatrix} D & A^T \\\\ A & 0 \end{bmatrix} \begin{bmatrix} x^* \\\\ \lambda^* \end{bmatrix} = \begin{bmatrix} -C \\\\ b \end{bmatrix}$$
+
+Donde:
+
+- $D$: Matriz de coeficientes cuadráticos (Hessiana)
+- $A$: Matriz de restricciones de igualdad
+- $A^T$: Traspuesta de la matriz de restricciones
+- $0$: Matriz de ceros del tamaño adecuado
+- $C$: Vector de coeficientes lineales
+- $b$: Vector de términos independientes
+
+📌 **Condición de primer orden para el óptimo del QP**
+
+*Para problemas QP con solo igualdades, todo óptimo $(x^*, \lambda^*)$ debe satisfacer la matriz KKT anterior. Este sistema representa las condiciones de primer orden del problema.*
+
+**Condiciones KKT completas:**
 
 1. **Estacionariedad**: $\nabla f(x) + A^T\lambda + \mu = 0$
 2. **Factibilidad primal**: $Ax = b$, $Gx \leq h$, $x \geq 0$
@@ -68,13 +89,22 @@ $$C = \begin{bmatrix} 0, 0, 0 \end{bmatrix}$$
   - $x$ (decisión): 3
   - $\lambda$ (igualdades): 1
   - $\lambda$ (desigualdades): 6
-  - $\mu$ (no negatividad): 3
 
-⚠️ **Nota metodológica:**
-Este problema se resolverá mediante **SLSQP** (Sequential Least Squares Programming), 
-un método numérico moderno que satisface las condiciones KKT al converger. 
-NO corresponde al método Simplex de dos fases del libro, sino a un solver 
-de optimización no lineal que maneja restricciones de forma eficiente.
+📌 **Manejo de desigualdades**
+
+*En presencia de desigualdades, el sistema KKT se extiende incorporando multiplicadores $\mu$ y condiciones de complementariedad. El software usa un método numérico (SLSQP) que encuentra una solución que satisface esas condiciones ampliadas.*
+
+⚠️ **Relación entre teoría y algoritmo:**
+
+Aunque la matriz KKT describe teóricamente el óptimo del problema, el software **no resuelve directamente este sistema**.
+
+En su lugar usa un **método numérico (SLSQP - Sequential Least Squares Programming)** que genera una secuencia de aproximaciones y converge a un punto que satisface las condiciones KKT.
+
+**Justificación:**
+
+*Los métodos numéricos empleados son equivalentes porque cualquier solución que minimiza la función cuadrática bajo restricciones lineales debe satisfacer las ecuaciones KKT. Por tanto, el algoritmo converge a un punto que cumple esas ecuaciones, aunque no las resuelva explícitamente.*
+
+Es decir, el **camino computacional** puede ser distinto, pero la **solución final** es equivalente a la del sistema KKT.
 
 
 ## PASO 5: PROCESO DE OPTIMIZACION
@@ -167,6 +197,11 @@ de optimización no lineal que maneja restricciones de forma eficiente.
 
 *No-negatividad ($\mu$):*
   - Ninguna variable en límite ($\mu_i = 0$)
+
+
+**Conclusión:**
+
+✓ La solución obtenida cumple las condiciones KKT, por lo tanto es un óptimo válido del problema cuadrático original.
 
 
 ---

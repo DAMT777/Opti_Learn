@@ -532,29 +532,41 @@ def solve_lagrange_payload(
     recomendacion: Dict[str, Any],
     method_note: str | None = None,
 ) -> tuple[str, Dict[str, Any]]:
+    """Resuelve problemas usando Multiplicadores de Lagrange."""
+    
+    # Extraer restricciones de igualdad
     equalities = [c.get('expr') for c in (problema.get('constraints') or []) if c.get('kind') == 'eq']
-    resultado = solver_lagrange.solve(
-        objective_expr=problema['objective_expr'],
-        variables=meta.get('variables') or [],
-        equalities=equalities,
+    
+    # Invocar solver completo de Lagrange
+    resultado = solver_lagrange.solve_with_lagrange_method(
+        objective_expression=problema['objective_expr'],
+        variable_names=meta.get('variables') or [],
+        equality_constraints=equalities,
     )
+    
+    # Construir mensaje de respuesta
     lines = []
-    lines.append('### Multiplicadores de Lagrange activados')
-    lines.append(f"- f(x) = {problema.get('objective_expr')}")
-    lines.append(f"- Igualdades detectadas ({len(equalities)}): {equalities or 'sin registrar'}")
-    lines.append(f"- Argumento de recomendacion: {recomendacion.get('rationale')}")
+    lines.append('### 🎯 Método de Multiplicadores de Lagrange')
+    lines.append('')
+    lines.append(f"**Función objetivo:** `{problema.get('objective_expr')}`")
+    lines.append(f"**Variables:** `{', '.join(meta.get('variables', []))}`")
+    lines.append(f"**Restricciones de igualdad:** {len(equalities)}")
+    
     if method_note:
-        lines.append(f"- Nota adicional: {method_note}")
+        lines.append('')
+        lines.append(f"**Nota:** {method_note}")
+    
     lines.append('')
-    lines.append('#### Procedimiento guiado')
-    lines.append('1. Formar L(x, lambda) = f(x) + sum(lambda_i * g_i(x)).')
-    lines.append('2. Calcular derivadas parciales respecto a cada variable y cada lambda_i.')
-    lines.append('3. Resolver el sistema estacionario {grad_x L = 0, g_i(x) = 0}.')
-    lines.append('4. Evaluar f en los candidatos y usar el Hessiano restringido para clasificar.')
-    lines.append('5. Interpretar los lambda_i como sensibilidad de cada restriccion.')
+    lines.append('---')
     lines.append('')
-    lines.append('El MVP actual entrega esta guia y recuerda que el solver exacto esta en desarrollo.')
-
+    
+    # Agregar explicación completa del solver
+    if resultado.get('status') == 'success':
+        lines.append(resultado.get('explanation', ''))
+    else:
+        lines.append(f"⚠️ **Error:** {resultado.get('message', 'Error desconocido')}")
+    
+    # Preparar payload de respuesta
     reply_payload: Dict[str, Any] = {
         'analysis': {
             'variables': meta.get('variables'),
@@ -562,13 +574,15 @@ def solve_lagrange_payload(
             'constraints': equalities,
             'recommendation': recomendacion,
         },
-        'plot': {'type': 'none', 'reason': 'lagrange_not_implemented'},
+        'plot': {'type': 'none', 'reason': 'lagrange_symbolic'},
         'solver': {
             'method': resultado.get('method', 'lagrange'),
-            'status': resultado.get('status', 'not_implemented'),
-            'message': resultado.get('message'),
+            'status': resultado.get('status', 'error'),
+            'message': resultado.get('message', ''),
+            'solution': resultado.get('solution', {}),
         },
     }
+    
     return "\n".join(lines), reply_payload
 
 

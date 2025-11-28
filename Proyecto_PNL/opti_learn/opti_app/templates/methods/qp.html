@@ -1,86 +1,282 @@
 {% extends "methods/base.html" %}
 
+{% block hero_color_class %}hero-card--qp{% endblock %}
+
 {% block method_icon %}
 <i class="bi bi-graph-up-arrow"></i>
 {% endblock %}
 
-{% block method_badge %}
-<div class="method-hero__badge badge-enhanced"><i class="bi bi-graph-up-arrow"></i> Objetivo cuadrático</div>
+{% block method_tags %}
+<span class="tag tag--method"><i class="bi bi-grid-3x3"></i> Cuadrático</span>
+<span class="tag tag--level"><i class="bi bi-mortarboard"></i> Intermedio</span>
+<span class="tag tag--type"><i class="bi bi-check2-circle"></i> Convexo</span>
 {% endblock %}
 
 {% block method_description %}
-<p class="mb-2">Resuelve problemas con <strong>función objetivo cuadrática</strong> y restricciones lineales. Ideal para problemas de cartera, asignación de recursos y control óptimo.</p>
-<div class="method-hero-tags">
-  <span class="chip"><i class="bi bi-grid-3x3"></i> x'Qx + c'x</span>
-  <span class="chip"><i class="bi bi-chevron-double-down"></i> Ax ≤ b</span>
-  <span class="chip"><i class="bi bi-check2-circle"></i> Convexo</span>
-</div>
+Resuelve problemas de <strong>Programación Cuadrática</strong> con forma $\min \frac{1}{2}x^T Q x + c^T x$ sujeto a restricciones lineales.
+El solver extrae automáticamente la <strong>matriz Q</strong> (Hessiana), el <strong>vector c</strong> y las matrices de restricciones 
+<strong>A, b</strong> para resolver mediante el sistema KKT.
 {% endblock %}
 
 {% block method_stats %}
-<div class="stat-item"><span class="stat-label">Tipo</span><span class="stat-value">QP Convexo</span></div>
-<div class="stat-item"><span class="stat-label">Restricciones</span><span class="stat-value">Lineales</span></div>
-<div class="stat-item"><span class="stat-label">Salida</span><span class="stat-value">x*, f* paso a paso</span></div>
+<div class="stat-chip"><i class="bi bi-input-cursor-text"></i> <span>Entrada</span><strong>f cuadrática</strong></div>
+<div class="stat-chip"><i class="bi bi-bullseye"></i> <span>Salida</span><strong>x*, Q, c</strong></div>
+<div class="stat-chip"><i class="bi bi-shield-check"></i> <span>Método</span><strong>Sistema KKT</strong></div>
 {% endblock %}
 
-{% block method_form_required %}
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-function"></i> Función objetivo cuadrática (SymPy)</label>
-  <textarea id="objective" class="form-control form-control--enhanced" rows="2" placeholder="x**2 + y**2 - 6*x - 4*y + 13">x**2 + y**2 - 6*x - 4*y + 13</textarea>
-  <div class="form-hint">Ejemplo: <code>0.5*x**2 + y**2 - x*y + 2*x</code></div>
+{% block method_form %}
+<!-- Función objetivo -->
+<div class="form-group-modern mb-3">
+  <label class="form-label-modern">
+    <i class="bi bi-function"></i> Función objetivo cuadrática $f(x)$
+    <span class="required-badge">Requerido</span>
+  </label>
+  <textarea id="objective" class="form-control form-control-modern" rows="2" placeholder="x**2 + y**2 - 6*x - 4*y + 13">x**2 + y**2 - 6*x - 4*y + 13</textarea>
+  <div class="form-hint"><i class="bi bi-info-circle"></i> Forma: $\frac{1}{2}x^TQx + c^Tx$. Ej: <code>x**2 + y**2 - x*y</code></div>
 </div>
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-list-ul"></i> Variables (separadas por coma)</label>
-  <input id="variables" class="form-control form-control--enhanced" placeholder="x, y" value="x, y">
+
+<!-- Variables -->
+<div class="form-group-modern mb-3">
+  <label class="form-label-modern">
+    <i class="bi bi-list-ul"></i> Variables de decisión
+    <span class="required-badge">Requerido</span>
+  </label>
+  <input id="variables" class="form-control form-control-modern" placeholder="x,y" value="x,y">
+  <div class="form-hint"><i class="bi bi-info-circle"></i> Separadas por coma.</div>
 </div>
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-sliders2"></i> Restricciones lineales</label>
-  <div id="constraintsContainer" class="constraints-builder">
-    <div class="input-group mb-2 constraint-row">
-      <select class="form-select form-control--enhanced constraint-kind" style="max-width: 110px;">
+{% endblock %}
+
+{% block method_form_constraints %}
+<!-- Restricciones lineales -->
+<div class="constraints-section">
+  <div class="constraints-header">
+    <div class="constraints-title">
+      <i class="bi bi-sliders2"></i>
+      <span>Restricciones lineales</span>
+    </div>
+    <button type="button" class="btn-add-constraint" id="addConstraintBtn">
+      <i class="bi bi-plus-circle"></i> Agregar
+    </button>
+  </div>
+  <div id="constraintsContainer" class="constraints-list mt-2">
+    <div class="constraint-row">
+      <select class="form-select form-control-modern constraint-kind" style="max-width: 100px;">
         <option value="le" selected>≤ 0</option>
         <option value="ge">≥ 0</option>
         <option value="eq">= 0</option>
       </select>
-      <input type="text" class="form-control form-control--enhanced constraint-input" placeholder="x + y - 10" value="x + y - 10">
+      <input type="text" class="form-control form-control-modern constraint-input" placeholder="x + y - 10" value="x + y - 10">
       <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
     </div>
-    <div class="input-group mb-2 constraint-row">
-      <select class="form-select form-control--enhanced constraint-kind" style="max-width: 110px;">
+    <div class="constraint-row">
+      <select class="form-select form-control-modern constraint-kind" style="max-width: 100px;">
         <option value="le">≤ 0</option>
         <option value="ge" selected>≥ 0</option>
         <option value="eq">= 0</option>
       </select>
-      <input type="text" class="form-control form-control--enhanced constraint-input" placeholder="x" value="x">
+      <input type="text" class="form-control form-control-modern constraint-input" placeholder="x" value="x">
       <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
     </div>
-    <div class="input-group mb-2 constraint-row">
-      <select class="form-select form-control--enhanced constraint-kind" style="max-width: 110px;">
+    <div class="constraint-row">
+      <select class="form-select form-control-modern constraint-kind" style="max-width: 100px;">
         <option value="le">≤ 0</option>
         <option value="ge" selected>≥ 0</option>
         <option value="eq">= 0</option>
       </select>
-      <input type="text" class="form-control form-control--enhanced constraint-input" placeholder="y" value="y">
+      <input type="text" class="form-control form-control-modern constraint-input" placeholder="y" value="y">
       <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
     </div>
   </div>
-  <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addConstraintBtn">
-    <i class="bi bi-plus-circle"></i> Agregar restricción
-  </button>
-  <div class="form-hint mt-2">Restricciones lineales: <code>Ax ≤ b</code>, <code>Ax = b</code>, o <code>x ≥ 0</code></div>
+  <div class="form-hint mt-2"><i class="bi bi-info-circle"></i> Restricciones de la forma $Ax \leq b$, $Ax = b$ o $x \geq 0$.</div>
 </div>
 {% endblock %}
 
 {% block method_form_optional %}
-<div class="text-muted small">
-  <i class="bi bi-cpu me-1"></i> Este método detecta automáticamente si Q es definida positiva.
+<div class="optional-params mt-3">
+  <div class="form-hint text-center">
+    <i class="bi bi-cpu"></i> El solver detecta automáticamente la definitud de Q.
+  </div>
 </div>
 {% endblock %}
 
-{% block method_tips %}
-<li><i class="bi bi-grid text-primary"></i><span>La matriz <strong>Q (Hessiano)</strong> debe ser semidefinida positiva para garantizar mínimo global.</span></li>
-<li><i class="bi bi-geo-alt text-warning"></i><span>El solver usará <strong>KKT</strong> internamente para encontrar la solución óptima.</span></li>
-<li><i class="bi bi-diagram-3 text-success"></i><span>Verás el análisis de <strong>convexidad</strong> y clasificación del problema.</span></li>
+{% block method_examples %}
+<div class="examples-section mt-4">
+  <div class="examples-header">
+    <i class="bi bi-lightning-charge"></i>
+    <span>Ejemplos típicos</span>
+  </div>
+  <div class="examples-grid">
+    <button class="example-btn" 
+            data-example="x**2 + y**2 - 6*x - 4*y + 13" 
+            data-vars="x,y" 
+            data-constraints='[{"expr": "x + y - 10", "kind": "le"}, {"expr": "x", "kind": "ge"}, {"expr": "y", "kind": "ge"}]'>
+      <i class="bi bi-1-circle"></i> Paraboloide acotado
+    </button>
+    <button class="example-btn" 
+            data-example="x**2 + y**2 - x*y + x - 2*y" 
+            data-vars="x,y" 
+            data-constraints='[{"expr": "x + y - 4", "kind": "le"}, {"expr": "x", "kind": "ge"}]'>
+      <i class="bi bi-2-circle"></i> QP con término mixto
+    </button>
+    <button class="example-btn" 
+            data-example="2*x**2 + y**2 + x*y - 3*x - 4*y" 
+            data-vars="x,y" 
+            data-constraints='[{"expr": "x + y - 3", "kind": "eq"}]'>
+      <i class="bi bi-3-circle"></i> Con restricción igualdad
+    </button>
+  </div>
+</div>
 {% endblock %}
 
-{% block method_primary_button %}<i class="bi bi-play-fill me-1"></i> Resolver QP{% endblock %}
+{% block method_guide %}
+<li class="guide-item">
+  <span class="guide-number">1</span>
+  <span class="guide-text">Ingresa la función cuadrática en forma simbólica.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">2</span>
+  <span class="guide-text">El solver extrae la matriz $Q$ (Hessiana) y vector $c$.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">3</span>
+  <span class="guide-text">Verifica la definitud de $Q$ (convexidad del problema).</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">4</span>
+  <span class="guide-text">Construye el sistema KKT aumentado y lo resuelve.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">5</span>
+  <span class="guide-text">Muestra $x^*$, multiplicadores y verificación de optimalidad.</span>
+</li>
+{% endblock %}
+
+{% block method_tips %}
+<div class="tips-box mt-3">
+  <div class="tips-box__header"><i class="bi bi-lightbulb"></i> Sistema KKT para QP</div>
+  <div class="tips-box__content">
+    El problema QP se resuelve con el sistema matricial:
+    $$\begin{bmatrix} Q & A^T \\ A & 0 \end{bmatrix} \begin{bmatrix} x \\ \lambda \end{bmatrix} = \begin{bmatrix} -c \\ b \end{bmatrix}$$
+    donde $Q$ debe ser <strong>semidefinida positiva</strong> para garantizar mínimo global.
+  </div>
+</div>
+{% endblock %}
+
+{% block iterations_title %}Descomposición QP y sistema KKT{% endblock %}
+{% block iterations_subtitle %}Matrices extraídas y resolución del sistema aumentado{% endblock %}
+
+{% block iterations_content %}
+<div class="qp-decomposition-section">
+  <!-- Matriz Q -->
+  <div class="matrix-card mb-3">
+    <div class="subsection-header">
+      <i class="bi bi-grid-3x3"></i>
+      <h6 class="subsection-title">Matriz $Q$ (Hessiana)</h6>
+    </div>
+    <div id="matrixQ" class="matrix-content">
+      <div class="placeholder-box placeholder-box--small">
+        <i class="bi bi-table"></i>
+        <span>La matriz Q aparecerá aquí después de resolver.</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Vector c -->
+  <div class="matrix-card mb-3">
+    <div class="subsection-header">
+      <i class="bi bi-list-ol"></i>
+      <h6 class="subsection-title">Vector $c$ (coeficientes lineales)</h6>
+    </div>
+    <div id="vectorC" class="matrix-content">
+      <div class="placeholder-box placeholder-box--small">
+        <i class="bi bi-list-ul"></i>
+        <span>El vector c aparecerá aquí después de resolver.</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Análisis de convexidad -->
+  <div class="convexity-card mb-3">
+    <div class="subsection-header">
+      <i class="bi bi-shield-check"></i>
+      <h6 class="subsection-title">Análisis de convexidad</h6>
+    </div>
+    <div id="convexityAnalysis" class="convexity-content">
+      <div class="placeholder-box placeholder-box--small">
+        <i class="bi bi-check2-circle"></i>
+        <span>El análisis de definitud de Q aparecerá aquí.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sistema KKT resuelto -->
+<div class="kkt-system-section mt-4">
+  <div class="subsection-header">
+    <i class="bi bi-calculator"></i>
+    <h6 class="subsection-title">Sistema KKT aumentado</h6>
+  </div>
+  <div class="table-responsive table-modern mt-3">
+    <table class="table table-iterations">
+      <thead>
+        <tr>
+          <th><span class="th-content">Variable</span></th>
+          <th><span class="th-content">Valor óptimo</span></th>
+          <th><span class="th-content">Tipo</span></th>
+        </tr>
+      </thead>
+      <tbody id="iters">
+        <tr class="placeholder-row">
+          <td colspan="3">
+            <div class="table-placeholder">
+              <i class="bi bi-braces"></i>
+              <span>La solución del sistema KKT aparecerá aquí.</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block visualizations_content %}
+<div class="viz-card" id="plotContour">
+  <div class="viz-card__header">
+    <i class="bi bi-layers"></i>
+    <span>Curvas de nivel + Región factible</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-bullseye"></i>
+      <span>Elipses de nivel de f(x) con región factible superpuesta</span>
+    </div>
+  </div>
+</div>
+
+<div class="viz-card" id="plotSurface">
+  <div class="viz-card__header">
+    <i class="bi bi-box"></i>
+    <span>Paraboloide 3D</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-badge-3d"></i>
+      <span>Superficie cuadrática con punto óptimo señalado</span>
+    </div>
+  </div>
+</div>
+
+<div class="viz-card" id="plotFx">
+  <div class="viz-card__header">
+    <i class="bi bi-bar-chart"></i>
+    <span>Eigenvalores de Q</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-graph-up"></i>
+      <span>Gráfica de eigenvalores mostrando convexidad</span>
+    </div>
+  </div>
+</div>
+{% endblock %}

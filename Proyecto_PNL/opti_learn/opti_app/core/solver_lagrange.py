@@ -175,14 +175,30 @@ class LagrangeSolver:
             # Serializar solución para JSON
             solution_serializable = serialize_for_json(self.optimal_solution) if self.optimal_solution else None
             
+            # Extraer x_star como lista de valores
+            x_star = None
+            lambda_star = None
+            f_star = None
+            
+            if step7.get('optimal_point'):
+                # x_star es un diccionario {var_name: value}, convertir a lista ordenada
+                x_star = list(step7['optimal_point'].values())
+            
+            if step7.get('lambda_values'):
+                # lambda_star es un diccionario {lambda_name: value}, convertir a lista
+                lambda_star = list(step7['lambda_values'].values())
+            
+            if step7.get('optimal_value') is not None:
+                f_star = step7['optimal_value']
+            
             return {
                 'method': 'lagrange',
                 'status': 'success',
                 'explanation': explanation,
                 'solution': solution_serializable,
-                'x_star': self.optimal_solution.get('x') if self.optimal_solution else None,
-                'f_star': self.optimal_solution.get('f') if self.optimal_solution else None,
-                'lambda_star': self.optimal_solution.get('lambda') if self.optimal_solution else None,
+                'x_star': x_star,
+                'f_star': f_star,
+                'lambda_star': lambda_star,
                 'critical_points': [serialize_for_json(pt) for pt in self.critical_points],
                 'plot_2d_path': plot_path_2d,
                 'plot_3d_path': plot_path_3d,

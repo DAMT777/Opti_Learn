@@ -32,232 +32,366 @@
       <div class="flex-grow-1 d-flex flex-column">
         <main class="px-4 pt-3 d-flex flex-column gap-4 method-layout">
           <section class="method-container glass-card p-0 flex-grow-1 w-100">
-            <!-- Header mejorado -->
+            <!-- Header con navegación -->
             <div class="method-header px-4 py-3 d-flex align-items-center gap-3">
               <button class="menu-btn menu-btn--enhanced" id="menuBtn" title="Menú">
                 <span class="inner"></span>
               </button>
               <div class="method-header__title">
                 <h5 class="m-0 fw-semibold">{{ title }}</h5>
-                <span class="method-header__subtitle text-muted small">Solver Interactivo</span>
+                <span class="method-header__subtitle text-muted small">Solver Pedagógico Interactivo</span>
               </div>
               <div class="ms-auto d-flex align-items-center gap-2">
-                <span class="status-indicator status-indicator--ready">
-                  <i class="bi bi-circle-fill"></i> Listo
+                <span class="status-indicator status-indicator--ready" id="solverStatus">
+                  <i class="bi bi-circle-fill"></i> <span>Listo</span>
                 </span>
               </div>
             </div>
             
-            <div class="p-4 d-flex flex-column gap-4">
-              <!-- Hero Section mejorada -->
-              <div class="method-hero method-hero--enhanced">
-                <div class="method-hero__icon">
-                  {% block method_icon %}
-                  <i class="bi bi-graph-up-arrow"></i>
-                  {% endblock %}
-                </div>
-                <div class="method-hero__content">
-                  {% block method_badge %}
-                  <div class="method-hero__badge badge-enhanced"><i class="bi bi-sliders"></i> Método</div>
-                  {% endblock %}
-                  <h4 class="method-hero__title mt-2 mb-2">{{ title }}</h4>
-                  <div class="method-hero__description">
-                    {% block method_description %}Describe aquí el objetivo del método.{% endblock %}
-                  </div>
-                  <div class="method-hero__stats stats-enhanced mt-3">
-                    {% block method_stats %}
-                    <div class="stat-item"><span class="stat-label">Tipo</span><span class="stat-value">General</span></div>
-                    <div class="stat-item"><span class="stat-label">Datos</span><span class="stat-value">Función y variables</span></div>
-                    <div class="stat-item"><span class="stat-label">Salida</span><span class="stat-value">Punto óptimo</span></div>
+            <div class="method-content p-4">
+              <!-- ═══════════════════════════════════════════════════════════════════════
+                   SECCIÓN 1: HERO - Presentación del método
+              ═══════════════════════════════════════════════════════════════════════ -->
+              <section class="method-section method-section--hero mb-4 fade-in-up">
+                <div class="hero-card {% block hero_color_class %}hero-card--primary{% endblock %}">
+                  <div class="hero-card__icon">
+                    {% block method_icon %}
+                    <i class="bi bi-graph-up-arrow"></i>
                     {% endblock %}
                   </div>
+                  <div class="hero-card__content">
+                    <div class="hero-card__tags">
+                      {% block method_tags %}
+                      <span class="tag tag--method"><i class="bi bi-sliders"></i> Optimización</span>
+                      <span class="tag tag--level"><i class="bi bi-mortarboard"></i> Intermedio</span>
+                      {% endblock %}
+                    </div>
+                    <h2 class="hero-card__title mt-2">{{ title }}</h2>
+                    <p class="hero-card__description mt-2">
+                      {% block method_description %}Método de optimización matemática.{% endblock %}
+                    </p>
+                    <div class="hero-card__stats mt-3">
+                      {% block method_stats %}
+                      <div class="stat-chip"><i class="bi bi-input-cursor-text"></i> <span>Entrada</span><strong>Función</strong></div>
+                      <div class="stat-chip"><i class="bi bi-bullseye"></i> <span>Salida</span><strong>Punto óptimo</strong></div>
+                      <div class="stat-chip"><i class="bi bi-clock-history"></i> <span>Tiempo</span><strong>~1 seg</strong></div>
+                      {% endblock %}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Grid principal: Formulario (izq) + Guía rápida (der) -->
+              <div class="method-input-grid mb-4">
+                <!-- ═══════════════════════════════════════════════════════════════════════
+                     SECCIÓN 2: FORMULARIO DE DATOS DEL PROBLEMA
+                ═══════════════════════════════════════════════════════════════════════ -->
+                <section class="method-section method-section--form glass-card p-4 fade-in-up">
+                  <div class="section-header">
+                    <div class="section-header__icon section-header__icon--form"><i class="bi bi-pencil-square"></i></div>
+                    <div class="section-header__text">
+                      <h5 class="section-header__title mb-0">Datos del problema</h5>
+                      <span class="section-header__subtitle">Ingresa los parámetros de tu problema</span>
+                    </div>
+                  </div>
+                  
+                  <div class="form-body mt-4">
+                    {% block method_form %}
+                    <!-- Campos requeridos -->
+                    <div class="form-group-modern mb-3">
+                      <label class="form-label-modern">
+                        <i class="bi bi-function"></i> Función objetivo $f(x)$
+                        <span class="required-badge">Requerido</span>
+                      </label>
+                      <textarea id="objective" class="form-control form-control-modern" rows="2" placeholder="(x-1)**2 + (y-2)**2"></textarea>
+                      <div class="form-hint"><i class="bi bi-info-circle"></i> Sintaxis SymPy: <code>x**2</code>, <code>sin(x)</code>, <code>exp(x)</code>, <code>sqrt(x)</code></div>
+                    </div>
+                    
+                    <div class="form-group-modern mb-3">
+                      <label class="form-label-modern">
+                        <i class="bi bi-list-ul"></i> Variables de decisión
+                        <span class="required-badge">Requerido</span>
+                      </label>
+                      <input id="variables" class="form-control form-control-modern" placeholder="x,y">
+                      <div class="form-hint"><i class="bi bi-info-circle"></i> Separadas por coma. Ej: <code>x,y,z</code></div>
+                    </div>
+                    {% endblock %}
+                    
+                    {% block method_form_constraints %}
+                    <!-- Área para restricciones - definida por cada método -->
+                    {% endblock %}
+                    
+                    {% block method_form_optional %}
+                    <!-- Parámetros opcionales - definidos por cada método -->
+                    {% endblock %}
+                  </div>
+                  
+                  <!-- Botones de acción -->
+                  <div class="form-actions mt-4">
+                    <button id="solveBtn" class="btn btn-solve">
+                      <i class="bi bi-play-fill"></i>
+                      <span>Resolver paso a paso</span>
+                      <div class="btn-shine"></div>
+                    </button>
+                    <button id="resetBtn" class="btn btn-reset" title="Limpiar formulario">
+                      <i class="bi bi-arrow-counterclockwise"></i>
+                      <span>Limpiar</span>
+                    </button>
+                  </div>
+                  
+                  <!-- Ejemplos rápidos -->
+                  {% block method_examples %}
+                  <div class="examples-section mt-4">
+                    <div class="examples-header">
+                      <i class="bi bi-lightning-charge"></i>
+                      <span>Ejemplos rápidos</span>
+                    </div>
+                    <div class="examples-grid">
+                      <!-- Definidos por cada método -->
+                    </div>
+                  </div>
+                  {% endblock %}
+                </section>
+                
+                <!-- ═══════════════════════════════════════════════════════════════════════
+                     SECCIÓN 3: VALIDACIONES + SECCIÓN 4: GUÍA RÁPIDA
+                ═══════════════════════════════════════════════════════════════════════ -->
+                <div class="method-sidebar">
+                  <!-- Bloque de validaciones -->
+                  <section class="method-section method-section--validation glass-card p-4 fade-in-up mb-3" style="animation-delay: 0.1s">
+                    <div class="section-header section-header--compact">
+                      <div class="section-header__icon section-header__icon--validation"><i class="bi bi-shield-check"></i></div>
+                      <h6 class="section-header__title mb-0">Validaciones</h6>
+                    </div>
+                    <div id="methodErrors" class="validation-box validation-box--neutral mt-3">
+                      <i class="bi bi-info-circle"></i>
+                      <span>Completa los campos requeridos para comenzar.</span>
+                    </div>
+                  </section>
+                  
+                  <!-- Guía pedagógica rápida -->
+                  <section class="method-section method-section--guide glass-card p-4 fade-in-up" style="animation-delay: 0.15s">
+                    <div class="section-header section-header--compact">
+                      <div class="section-header__icon section-header__icon--guide"><i class="bi bi-lightbulb"></i></div>
+                      <h6 class="section-header__title mb-0">Guía pedagógica</h6>
+                    </div>
+                    <ul class="guide-list mt-3">
+                      {% block method_guide %}
+                      <li class="guide-item">
+                        <span class="guide-number">1</span>
+                        <span class="guide-text">Ingresa la función objetivo a optimizar.</span>
+                      </li>
+                      <li class="guide-item">
+                        <span class="guide-number">2</span>
+                        <span class="guide-text">Define las variables de decisión.</span>
+                      </li>
+                      <li class="guide-item">
+                        <span class="guide-number">3</span>
+                        <span class="guide-text">Agrega restricciones si aplica.</span>
+                      </li>
+                      <li class="guide-item">
+                        <span class="guide-number">4</span>
+                        <span class="guide-text">Haz clic en "Resolver" y analiza cada paso.</span>
+                      </li>
+                      {% endblock %}
+                    </ul>
+                    
+                    {% block method_tips %}
+                    <div class="tips-box mt-3">
+                      <div class="tips-box__header"><i class="bi bi-info-circle"></i> Tip</div>
+                      <div class="tips-box__content">
+                        Revisa cada paso del procedimiento para entender la matemática detrás del resultado.
+                      </div>
+                    </div>
+                    {% endblock %}
+                  </section>
                 </div>
               </div>
+              
               {% block method_body %}
-              <div class="method-grid method-grid--enhanced">
-                <!-- Formulario Principal -->
-                <section class="glass-card method-card method-card--form p-4 fade-in-up">
-                  <div class="card-header-enhanced mb-3">
-                    <div class="card-icon"><i class="bi bi-pencil-square"></i></div>
-                    <h6 class="mb-0">Datos del problema</h6>
+              <!-- ═══════════════════════════════════════════════════════════════════════
+                   SECCIÓN 5: SOLUCIÓN PASO A PASO (3 subsecciones)
+              ═══════════════════════════════════════════════════════════════════════ -->
+              <section class="method-section method-section--solution glass-card p-4 mb-4 fade-in-up" style="animation-delay: 0.2s" id="solutionSection">
+                <div class="section-header mb-4">
+                  <div class="section-header__icon section-header__icon--solution"><i class="bi bi-mortarboard"></i></div>
+                  <div class="section-header__text">
+                    <h5 class="section-header__title mb-0">Solución paso a paso</h5>
+                    <span class="section-header__subtitle">Desarrollo pedagógico completo</span>
                   </div>
-                  {% block method_form_required %}
-                  <div class="form-group-enhanced mb-3">
-                    <label class="form-label form-label--enhanced">
-                      <i class="bi bi-function"></i> Función objetivo (SymPy)
-                    </label>
-                    <textarea id="objective" class="form-control form-control--enhanced" rows="3" placeholder="(x-1)**2 + (y-2)**2"></textarea>
-                    <div class="form-hint">Use sintaxis SymPy: <code>x**2</code>, <code>sin(x)</code>, <code>exp(x)</code></div>
-                  </div>
-                  <div class="form-group-enhanced mb-3">
-                    <label class="form-label form-label--enhanced">
-                      <i class="bi bi-list-ul"></i> Variables (separadas por coma)
-                    </label>
-                    <input id="variables" class="form-control form-control--enhanced" placeholder="x,y">
-                  </div>
-                  {% endblock %}
-                  
-                  <div class="form-divider my-4">
-                    <span>Parámetros opcionales</span>
-                  </div>
-                  
-                  {% block method_form_optional %}
-                  <div class="form-group-enhanced mb-3">
-                    <label class="form-label form-label--enhanced">
-                      <i class="bi bi-geo-alt"></i> Vector inicial x<sub>0</sub>
-                    </label>
-                    <input id="x0" class="form-control form-control--enhanced" placeholder="[0.5, -1]">
-                  </div>
-                  <div class="row g-3">
-                    <div class="col-md-6">
-                      <div class="form-group-enhanced">
-                        <label class="form-label form-label--enhanced">
-                          <i class="bi bi-bullseye"></i> Tolerancia
-                        </label>
-                        <input id="tol" class="form-control form-control--enhanced" placeholder="1e-6">
-                      </div>
-                    </div>
-                    <div class="col-md-6">
-                      <div class="form-group-enhanced">
-                        <label class="form-label form-label--enhanced">
-                          <i class="bi bi-arrow-repeat"></i> Iteraciones máx.
-                        </label>
-                        <input id="maxIter" class="form-control form-control--enhanced" placeholder="200">
-                      </div>
-                    </div>
-                  </div>
-                  {% endblock %}
-                  
-                  <div class="action-buttons mt-4">
-                    <button id="solveBtn" class="btn btn-primary btn-primary--glow btn-lg">
-                      <i class="bi bi-play-fill"></i>
-                      {% block method_primary_button %}Resolver{% endblock %}
-                    </button>
-                    <button id="resetBtn" class="btn btn-outline-secondary">
-                      <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                  <div class="section-header__actions ms-auto">
+                    <button class="btn btn-sm btn-outline-secondary" id="expandAllSteps" title="Expandir todos">
+                      <i class="bi bi-arrows-expand"></i>
                     </button>
                   </div>
-                </section>
-
-                <!-- Guía rápida -->
-                <section class="glass-card method-card method-card--tips p-4 fade-in-up" style="animation-delay: 0.1s;">
-                  <div class="card-header-enhanced mb-3">
-                    <div class="card-icon card-icon--info"><i class="bi bi-lightbulb"></i></div>
-                    <h6 class="mb-0">Guía rápida</h6>
+                </div>
+                
+                <!-- 5.1 Interpretación del problema -->
+                <div class="solution-subsection solution-subsection--interpretation mb-4">
+                  <div class="subsection-header">
+                    <span class="subsection-number">5.1</span>
+                    <h6 class="subsection-title"><i class="bi bi-chat-quote"></i> Interpretación del problema</h6>
                   </div>
-                  <ul class="method-tips method-tips--enhanced">
-                    {% block method_tips %}
-                    <li><i class="bi bi-lightbulb"></i><span>Aquí puedes añadir consejos útiles para el usuario.</span></li>
-                    {% endblock %}
-                  </ul>
-                </section>
-
-                <!-- Validaciones -->
-                <section class="glass-card method-card method-card--errors p-4 fade-in-up" style="animation-delay: 0.2s;">
-                  <div class="card-header-enhanced mb-3">
-                    <div class="card-icon card-icon--warning"><i class="bi bi-shield-check"></i></div>
-                    <h6 class="mb-0">Validaciones</h6>
-                  </div>
-                  <div id="methodErrors" class="validation-message text-muted">
-                    <i class="bi bi-info-circle me-2"></i>
-                    Completa la función objetivo y las variables para comenzar.
-                  </div>
-                </section>
-
-                <!-- Resultados Principales -->
-                <section class="glass-card method-card method-card--result p-4 fade-in-up" style="animation-delay: 0.3s;">
-                  <div class="card-header-enhanced mb-3">
-                    <div class="card-icon card-icon--success"><i class="bi bi-trophy"></i></div>
-                    <h6 class="mb-0">Solución paso a paso</h6>
-                  </div>
-                  
-                  <div class="result-section mb-4">
-                    <div class="result-section__header">
-                      <i class="bi bi-lightbulb"></i>
-                      <span>Interpretación</span>
-                    </div>
-                    <div id="resultInterpretation" class="result-content text-muted">
-                      La interpretación aparecerá aquí después de resolver.
+                  <div id="resultInterpretation" class="subsection-content interpretation-content">
+                    <div class="placeholder-box">
+                      <i class="bi bi-file-text"></i>
+                      <span>La interpretación aparecerá aquí después de resolver el problema.</span>
                     </div>
                   </div>
-                  
-                  <div class="result-section mb-4">
-                    <div class="result-section__header">
-                      <i class="bi bi-list-task"></i>
-                      <span>Procedimiento detallado</span>
-                    </div>
-                    <div id="resultDetails" class="result-content result-content--procedure text-muted">
-                      El procedimiento paso a paso aparecerá aquí.
+                </div>
+                
+                <!-- 5.2 Procedimiento detallado -->
+                <div class="solution-subsection solution-subsection--procedure mb-4">
+                  <div class="subsection-header">
+                    <span class="subsection-number">5.2</span>
+                    <h6 class="subsection-title"><i class="bi bi-list-task"></i> Procedimiento detallado</h6>
+                  </div>
+                  <div id="resultDetails" class="subsection-content procedure-content">
+                    <div class="placeholder-box">
+                      <i class="bi bi-journal-code"></i>
+                      <span>El procedimiento paso a paso aparecerá aquí.</span>
                     </div>
                   </div>
-                  
-                  <div class="result-section">
-                    <div class="result-section__header">
-                      <i class="bi bi-bullseye"></i>
-                      <span>Resultados principales</span>
-                    </div>
-                    <div id="resultMain" class="result-content result-content--main">
-                      <div class="placeholder-result">
-                        <i class="bi bi-calculator"></i>
-                        <p>Los resultados aparecerán aquí</p>
+                </div>
+                
+                <!-- 5.3 Resultados principales -->
+                <div class="solution-subsection solution-subsection--results">
+                  <div class="subsection-header">
+                    <span class="subsection-number">5.3</span>
+                    <h6 class="subsection-title"><i class="bi bi-trophy"></i> Resultados principales</h6>
+                  </div>
+                  <div id="resultMain" class="subsection-content results-content">
+                    <div class="results-grid results-grid--placeholder">
+                      <div class="result-card result-card--placeholder">
+                        <div class="result-card__icon"><i class="bi bi-geo-alt"></i></div>
+                        <div class="result-card__label">Punto óptimo $x^*$</div>
+                        <div class="result-card__value">—</div>
+                      </div>
+                      <div class="result-card result-card--placeholder">
+                        <div class="result-card__icon"><i class="bi bi-bullseye"></i></div>
+                        <div class="result-card__label">Valor óptimo $f^*$</div>
+                        <div class="result-card__value">—</div>
+                      </div>
+                      <div class="result-card result-card--placeholder">
+                        <div class="result-card__icon"><i class="bi bi-tags"></i></div>
+                        <div class="result-card__label">Clasificación</div>
+                        <div class="result-card__value">—</div>
                       </div>
                     </div>
                   </div>
-                </section>
-
-                <!-- Iteraciones -->
-                <section class="glass-card method-card method-card--iterations p-4 fade-in-up" style="animation-delay: 0.4s;">
-                  <div class="card-header-enhanced mb-3">
-                    <div class="card-icon card-icon--primary"><i class="bi bi-table"></i></div>
-                    <h6 class="mb-0">Iteraciones / Sistema resuelto</h6>
+                </div>
+              </section>
+              
+              <!-- ═══════════════════════════════════════════════════════════════════════
+                   SECCIÓN 6: ITERACIONES / SISTEMA RESUELTO
+              ═══════════════════════════════════════════════════════════════════════ -->
+              <section class="method-section method-section--iterations glass-card p-4 mb-4 fade-in-up" style="animation-delay: 0.3s" id="iterationsSection">
+                <div class="section-header mb-4">
+                  <div class="section-header__icon section-header__icon--iterations"><i class="bi bi-table"></i></div>
+                  <div class="section-header__text">
+                    <h5 class="section-header__title mb-0">{% block iterations_title %}Iteraciones / Sistema resuelto{% endblock %}</h5>
+                    <span class="section-header__subtitle">{% block iterations_subtitle %}Detalle de cada iteración o sistema de ecuaciones{% endblock %}</span>
                   </div>
-                  <div class="table-responsive table-enhanced">
-                    <table class="table table-sm align-middle">
+                </div>
+                
+                {% block iterations_content %}
+                <div class="iterations-wrapper">
+                  <div class="table-responsive table-modern">
+                    <table class="table table-iterations">
                       <thead>
-                        <tr><th>k</th><th>f<sub>k</sub></th><th>||∇f||</th><th>α<sub>k</sub></th></tr>
+                        <tr>
+                          <th><span class="th-content">k</span></th>
+                          <th><span class="th-content">$x_k$</span></th>
+                          <th><span class="th-content">$f(x_k)$</span></th>
+                          <th><span class="th-content">$\|\nabla f\|$</span></th>
+                          <th><span class="th-content">$\alpha_k$</span></th>
+                        </tr>
                       </thead>
                       <tbody id="iters">
-                        <tr class="placeholder-row"><td colspan="4" class="text-center text-muted">Sin iteraciones aún</td></tr>
+                        <tr class="placeholder-row">
+                          <td colspan="5">
+                            <div class="table-placeholder">
+                              <i class="bi bi-clock-history"></i>
+                              <span>Sin iteraciones aún. Resuelve un problema para ver los datos.</span>
+                            </div>
+                          </td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
-                  <div class="line-search-details mt-4">
-                    <div class="result-section__header">
-                      <i class="bi bi-search"></i>
-                      <span>Búsqueda de línea (α<sub>k</sub>)</span>
-                    </div>
-                    <div id="lineSearchDetails" class="result-content text-muted">Sin datos de búsqueda de línea.</div>
+                </div>
+                
+                <!-- Detalle de búsqueda de línea -->
+                <div class="line-search-section mt-4" id="lineSearchSection">
+                  <div class="subsection-header">
+                    <i class="bi bi-search"></i>
+                    <h6 class="subsection-title">Búsqueda de línea $(\alpha_k)$</h6>
                   </div>
-                </section>
-
-                <!-- Gráficas -->
-                <section class="glass-card method-card method-card--graphs p-4 fade-in-up" style="animation-delay: 0.5s;">
-                  <div class="card-header-enhanced mb-3">
-                    <div class="card-icon card-icon--accent"><i class="bi bi-graph-up"></i></div>
-                    <h6 class="mb-0">Visualizaciones</h6>
-                  </div>
-                  <div class="method-graphs method-graphs--enhanced">
-                    <div class="method-graph method-graph--enhanced" id="plotContour">
-                      <div class="graph-placeholder">
-                        <i class="bi bi-grid-3x3"></i>
-                        <span>Curvas de nivel</span>
-                      </div>
-                    </div>
-                    <div class="method-graph method-graph--enhanced" id="plotSurface">
-                      <div class="graph-placeholder">
-                        <i class="bi bi-box"></i>
-                        <span>Superficie 3D</span>
-                      </div>
-                    </div>
-                    <div class="method-graph method-graph--enhanced" id="plotFx">
-                      <div class="graph-placeholder">
-                        <i class="bi bi-graph-down"></i>
-                        <span>Evolución f(x<sub>k</sub>)</span>
-                      </div>
+                  <div id="lineSearchDetails" class="line-search-content">
+                    <div class="placeholder-box placeholder-box--small">
+                      <i class="bi bi-signpost-split"></i>
+                      <span>Sin datos de búsqueda de línea.</span>
                     </div>
                   </div>
-                </section>
-              </div>
+                </div>
+                {% endblock %}
+              </section>
+              
+              <!-- ═══════════════════════════════════════════════════════════════════════
+                   SECCIÓN 7: VISUALIZACIONES
+              ═══════════════════════════════════════════════════════════════════════ -->
+              <section class="method-section method-section--visualizations glass-card p-4 fade-in-up" style="animation-delay: 0.4s" id="visualizationsSection">
+                <div class="section-header mb-4">
+                  <div class="section-header__icon section-header__icon--visualizations"><i class="bi bi-graph-up"></i></div>
+                  <div class="section-header__text">
+                    <h5 class="section-header__title mb-0">Visualizaciones</h5>
+                    <span class="section-header__subtitle">Gráficas interactivas del problema y solución</span>
+                  </div>
+                </div>
+                
+                <div class="visualizations-grid">
+                  {% block visualizations_content %}
+                  <div class="viz-card" id="plotContour">
+                    <div class="viz-card__header">
+                      <i class="bi bi-grid-3x3"></i>
+                      <span>Curvas de nivel</span>
+                    </div>
+                    <div class="viz-card__body">
+                      <div class="viz-placeholder">
+                        <i class="bi bi-layers"></i>
+                        <span>Gráfica de contorno disponible tras resolver</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="viz-card" id="plotSurface">
+                    <div class="viz-card__header">
+                      <i class="bi bi-box"></i>
+                      <span>Superficie 3D</span>
+                    </div>
+                    <div class="viz-card__body">
+                      <div class="viz-placeholder">
+                        <i class="bi bi-badge-3d"></i>
+                        <span>Superficie 3D disponible tras resolver</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="viz-card" id="plotFx">
+                    <div class="viz-card__header">
+                      <i class="bi bi-graph-down"></i>
+                      <span>Evolución $f(x_k)$</span>
+                    </div>
+                    <div class="viz-card__body">
+                      <div class="viz-placeholder">
+                        <i class="bi bi-activity"></i>
+                        <span>Convergencia disponible tras resolver</span>
+                      </div>
+                    </div>
+                  </div>
+                  {% endblock %}
+                </div>
+              </section>
               {% endblock %}
             </div>
           </section>

@@ -1,94 +1,265 @@
 {% extends "methods/base.html" %}
 
+{% block hero_color_class %}hero-card--kkt{% endblock %}
+
 {% block method_icon %}
 <i class="bi bi-shield-check"></i>
 {% endblock %}
 
-{% block method_badge %}
-<div class="method-hero__badge badge-enhanced"><i class="bi bi-shield-check"></i> Restricciones mixtas</div>
+{% block method_tags %}
+<span class="tag tag--method"><i class="bi bi-sliders2"></i> Restricciones mixtas</span>
+<span class="tag tag--level"><i class="bi bi-mortarboard"></i> Avanzado</span>
+<span class="tag tag--type"><i class="bi bi-diagram-3"></i> Casos múltiples</span>
 {% endblock %}
 
 {% block method_description %}
-<p class="mb-2">Resuelve problemas con <strong>igualdades y desigualdades</strong> usando las condiciones de <strong>Karush-Kuhn-Tucker</strong>. El solver analiza todos los casos posibles y muestra el procedimiento completo.</p>
-<div class="method-hero-tags">
-  <span class="chip"><i class="bi bi-chevron-double-down"></i> g(x) ≤ 0</span>
-  <span class="chip"><i class="bi bi-dash-lg"></i> h(x) = 0</span>
-  <span class="chip"><i class="bi bi-puzzle"></i> Complementariedad</span>
-</div>
+Resuelve problemas con <strong>restricciones de igualdad y desigualdad</strong> usando las condiciones de <strong>Karush-Kuhn-Tucker</strong>.
+El solver analiza <strong>todos los casos</strong> de restricciones activas/inactivas, verifica las condiciones de 
+<strong>complementariedad</strong> $\mu_i g_i(x) = 0$ y $\mu_i \geq 0$ para encontrar el óptimo global.
 {% endblock %}
 
 {% block method_stats %}
-<div class="stat-item"><span class="stat-label">Tipo</span><span class="stat-value">Condiciones KKT</span></div>
-<div class="stat-item"><span class="stat-label">Restricciones</span><span class="stat-value">Igualdad + Desigualdad</span></div>
-<div class="stat-item"><span class="stat-label">Salida</span><span class="stat-value">x*, λ*, μ*</span></div>
+<div class="stat-chip"><i class="bi bi-input-cursor-text"></i> <span>Entrada</span><strong>f, g≤0, h=0</strong></div>
+<div class="stat-chip"><i class="bi bi-bullseye"></i> <span>Salida</span><strong>x*, λ*, μ*</strong></div>
+<div class="stat-chip"><i class="bi bi-diagram-2"></i> <span>Análisis</span><strong>2^n casos</strong></div>
 {% endblock %}
 
-{% block method_form_required %}
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-function"></i> Función objetivo (SymPy)</label>
-  <textarea id="objective" class="form-control form-control--enhanced" rows="2" placeholder="(x-3)**2 + (y-2)**2">(x-3)**2 + (y-2)**2</textarea>
-  <div class="form-hint">Ejemplo: <code>(x-3)**2 + (y-2)**2</code> (minimizar distancia al punto (3,2))</div>
+{% block method_form %}
+<!-- Función objetivo -->
+<div class="form-group-modern mb-3">
+  <label class="form-label-modern">
+    <i class="bi bi-function"></i> Función objetivo $f(x)$
+    <span class="required-badge">Requerido</span>
+  </label>
+  <textarea id="objective" class="form-control form-control-modern" rows="2" placeholder="(x-3)**2 + (y-2)**2">(x-3)**2 + (y-2)**2</textarea>
+  <div class="form-hint"><i class="bi bi-info-circle"></i> Función a minimizar/maximizar. Ej: <code>(x-3)**2 + (y-2)**2</code></div>
 </div>
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-list-ul"></i> Variables (separadas por coma)</label>
-  <input id="variables" class="form-control form-control--enhanced" placeholder="x, y" value="x, y">
+
+<!-- Variables -->
+<div class="form-group-modern mb-3">
+  <label class="form-label-modern">
+    <i class="bi bi-list-ul"></i> Variables de decisión
+    <span class="required-badge">Requerido</span>
+  </label>
+  <input id="variables" class="form-control form-control-modern" placeholder="x,y" value="x,y">
+  <div class="form-hint"><i class="bi bi-info-circle"></i> Separadas por coma.</div>
 </div>
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-sliders2"></i> Restricciones (mixtas)</label>
-  <div id="constraintsContainer" class="constraints-builder">
-    <div class="input-group mb-2 constraint-row">
-      <select class="form-select form-control--enhanced constraint-kind" style="max-width: 110px;">
-        <option value="le" selected>≤ 0</option>
-        <option value="ge">≥ 0</option>
-        <option value="eq">= 0</option>
-      </select>
-      <input type="text" class="form-control form-control--enhanced constraint-input" placeholder="x + y - 4" value="x + y - 4">
-      <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
-    </div>
-    <div class="input-group mb-2 constraint-row">
-      <select class="form-select form-control--enhanced constraint-kind" style="max-width: 110px;">
-        <option value="le">≤ 0</option>
-        <option value="ge" selected>≥ 0</option>
-        <option value="eq">= 0</option>
-      </select>
-      <input type="text" class="form-control form-control--enhanced constraint-input" placeholder="x" value="x">
-      <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
-    </div>
-    <div class="input-group mb-2 constraint-row">
-      <select class="form-select form-control--enhanced constraint-kind" style="max-width: 110px;">
-        <option value="le">≤ 0</option>
-        <option value="ge" selected>≥ 0</option>
-        <option value="eq">= 0</option>
-      </select>
-      <input type="text" class="form-control form-control--enhanced constraint-input" placeholder="y" value="y">
-      <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
-    </div>
-  </div>
-  <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addConstraintBtn">
-    <i class="bi bi-plus-circle"></i> Agregar restricción
-  </button>
-  <div class="form-hint mt-2">Escribe la expresión, ejemplo: <code>x + y - 4</code> con tipo ≤ 0</div>
-</div>
-<div class="form-group-enhanced mb-3">
-  <div class="form-check form-check--enhanced">
+
+<!-- Opción de maximización -->
+<div class="form-group-modern mb-3">
+  <div class="form-check">
     <input class="form-check-input" type="checkbox" id="isMaximization">
     <label class="form-check-label" for="isMaximization">
-      <i class="bi bi-arrow-up-circle text-success me-1"></i> Maximizar (por defecto minimiza)
+      <i class="bi bi-arrow-up-circle text-success me-1"></i> <strong>Maximizar</strong> (por defecto minimiza)
     </label>
   </div>
 </div>
 {% endblock %}
 
-{% block method_form_optional %}
-<div class="text-muted small">
-  <i class="bi bi-info-circle me-1"></i> Este método no requiere parámetros adicionales.
+{% block method_form_constraints %}
+<!-- Restricciones mixtas -->
+<div class="constraints-section">
+  <div class="constraints-header">
+    <div class="constraints-title">
+      <i class="bi bi-sliders2"></i>
+      <span>Restricciones (igualdad y desigualdad)</span>
+      <span class="required-badge">Requerido</span>
+    </div>
+    <button type="button" class="btn-add-constraint" id="addConstraintBtn">
+      <i class="bi bi-plus-circle"></i> Agregar
+    </button>
+  </div>
+  <div id="constraintsContainer" class="constraints-list mt-2">
+    <div class="constraint-row">
+      <select class="form-select form-control-modern constraint-kind" style="max-width: 100px;">
+        <option value="le" selected>≤ 0</option>
+        <option value="ge">≥ 0</option>
+        <option value="eq">= 0</option>
+      </select>
+      <input type="text" class="form-control form-control-modern constraint-input" placeholder="x + y - 4" value="x + y - 4">
+      <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
+    </div>
+    <div class="constraint-row">
+      <select class="form-select form-control-modern constraint-kind" style="max-width: 100px;">
+        <option value="le">≤ 0</option>
+        <option value="ge" selected>≥ 0</option>
+        <option value="eq">= 0</option>
+      </select>
+      <input type="text" class="form-control form-control-modern constraint-input" placeholder="x" value="x">
+      <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
+    </div>
+    <div class="constraint-row">
+      <select class="form-select form-control-modern constraint-kind" style="max-width: 100px;">
+        <option value="le">≤ 0</option>
+        <option value="ge" selected>≥ 0</option>
+        <option value="eq">= 0</option>
+      </select>
+      <input type="text" class="form-control form-control-modern constraint-input" placeholder="y" value="y">
+      <button type="button" class="btn btn-outline-danger btn-remove-constraint" title="Eliminar"><i class="bi bi-x"></i></button>
+    </div>
+  </div>
+  <div class="form-hint mt-2"><i class="bi bi-info-circle"></i> Selecciona el tipo (≤, ≥, =) y escribe la expresión igualada a 0.</div>
 </div>
 {% endblock %}
 
-{% block method_tips %}
-<li><i class="bi bi-layers text-primary"></i><span>El solver probará <strong>todas las combinaciones</strong> de restricciones activas/inactivas.</span></li>
-<li><i class="bi bi-eye text-warning"></i><span>Los multiplicadores <strong>λ ≥ 0</strong> indican qué restricciones están "presionando" la solución.</span></li>
-<li><i class="bi bi-rulers text-info"></i><span>La condición de complementariedad <strong>λᵢ·gᵢ(x) = 0</strong> es clave para KKT.</span></li>
+{% block method_form_optional %}
+<div class="optional-params mt-3">
+  <div class="form-hint text-center">
+    <i class="bi bi-gear"></i> Este método analiza todos los casos automáticamente.
+  </div>
+</div>
 {% endblock %}
 
-{% block method_primary_button %}<i class="bi bi-play-fill me-1"></i> Resolver KKT{% endblock %}
+{% block method_examples %}
+<div class="examples-section mt-4">
+  <div class="examples-header">
+    <i class="bi bi-lightning-charge"></i>
+    <span>Ejemplos clásicos</span>
+  </div>
+  <div class="examples-grid">
+    <button class="example-btn" 
+            data-example="(x-3)**2 + (y-2)**2" 
+            data-vars="x,y" 
+            data-constraints='[{"expr": "x + y - 4", "kind": "le"}, {"expr": "x", "kind": "ge"}, {"expr": "y", "kind": "ge"}]'>
+      <i class="bi bi-1-circle"></i> Distancia con región
+    </button>
+    <button class="example-btn" 
+            data-example="x**2 + y**2" 
+            data-vars="x,y" 
+            data-constraints='[{"expr": "x + y - 1", "kind": "ge"}, {"expr": "x", "kind": "ge"}]'>
+      <i class="bi bi-2-circle"></i> Mínimo acotado
+    </button>
+    <button class="example-btn" 
+            data-example="-x*y" 
+            data-vars="x,y" 
+            data-constraints='[{"expr": "x + 2*y - 4", "kind": "le"}, {"expr": "x", "kind": "ge"}, {"expr": "y", "kind": "ge"}]'>
+      <i class="bi bi-3-circle"></i> Maximizar área
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block method_guide %}
+<li class="guide-item">
+  <span class="guide-number">1</span>
+  <span class="guide-text">Ingresa la función objetivo y selecciona min/max.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">2</span>
+  <span class="guide-text">Agrega restricciones con su tipo (≤, ≥, =).</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">3</span>
+  <span class="guide-text">El solver genera $2^m$ casos de restricciones activas.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">4</span>
+  <span class="guide-text">Verifica $\mu_i \geq 0$ y complementariedad $\mu_i g_i = 0$.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">5</span>
+  <span class="guide-text">Compara todos los candidatos válidos y selecciona el óptimo.</span>
+</li>
+{% endblock %}
+
+{% block method_tips %}
+<div class="tips-box mt-3">
+  <div class="tips-box__header"><i class="bi bi-lightbulb"></i> Condiciones KKT</div>
+  <div class="tips-box__content">
+    <strong>Las 4 condiciones de KKT son:</strong>
+    <ol class="mb-0 ps-3 mt-2">
+      <li><strong>Estacionariedad:</strong> $\nabla f + \sum \lambda_i \nabla h_i + \sum \mu_j \nabla g_j = 0$</li>
+      <li><strong>Factibilidad primal:</strong> $h_i(x) = 0$, $g_j(x) \leq 0$</li>
+      <li><strong>Factibilidad dual:</strong> $\mu_j \geq 0$</li>
+      <li><strong>Complementariedad:</strong> $\mu_j \cdot g_j(x) = 0$</li>
+    </ol>
+  </div>
+</div>
+{% endblock %}
+
+{% block iterations_title %}Análisis de casos KKT{% endblock %}
+{% block iterations_subtitle %}Evaluación de cada combinación de restricciones activas/inactivas{% endblock %}
+
+{% block iterations_content %}
+<div class="kkt-cases-section">
+  <div id="kktCasesContent" class="cases-content">
+    <div class="placeholder-box">
+      <i class="bi bi-diagram-2"></i>
+      <span>Los casos de KKT (activo/inactivo) aparecerán aquí después de resolver.</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla de casos evaluados -->
+<div class="cases-table-section mt-4">
+  <div class="subsection-header">
+    <i class="bi bi-table"></i>
+    <h6 class="subsection-title">Resumen de casos evaluados</h6>
+  </div>
+  <div class="table-responsive table-modern mt-3">
+    <table class="table table-iterations">
+      <thead>
+        <tr>
+          <th><span class="th-content">Caso</span></th>
+          <th><span class="th-content">Activas</span></th>
+          <th><span class="th-content">$x^*$</span></th>
+          <th><span class="th-content">$\mu$</span></th>
+          <th><span class="th-content">$f(x^*)$</span></th>
+          <th><span class="th-content">¿Válido?</span></th>
+        </tr>
+      </thead>
+      <tbody id="iters">
+        <tr class="placeholder-row">
+          <td colspan="6">
+            <div class="table-placeholder">
+              <i class="bi bi-list-check"></i>
+              <span>La evaluación de casos aparecerá aquí después de resolver.</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block visualizations_content %}
+<div class="viz-card" id="plotContour">
+  <div class="viz-card__header">
+    <i class="bi bi-layers"></i>
+    <span>Región factible + Curvas de nivel</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-pentagon"></i>
+      <span>Visualización de la región factible y el punto óptimo</span>
+    </div>
+  </div>
+</div>
+
+<div class="viz-card" id="plotSurface">
+  <div class="viz-card__header">
+    <i class="bi bi-box"></i>
+    <span>Superficie 3D + Restricciones</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-badge-3d"></i>
+      <span>Superficie de f(x,y) con restricciones superpuestas</span>
+    </div>
+  </div>
+</div>
+
+<div class="viz-card" id="plotFx">
+  <div class="viz-card__header">
+    <i class="bi bi-bar-chart"></i>
+    <span>Comparación de casos</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-graph-up"></i>
+      <span>Gráfica comparativa de valores f(x*) por caso</span>
+    </div>
+  </div>
+</div>
+{% endblock %}

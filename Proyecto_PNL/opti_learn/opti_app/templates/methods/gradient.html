@@ -1,66 +1,243 @@
 ﻿{% extends "methods/base.html" %}
 
+{% block hero_color_class %}hero-card--gradient{% endblock %}
+
 {% block method_icon %}
-<i class="bi bi-arrow-down-right-circle"></i>
+<i class="bi bi-arrow-down-right-circle-fill"></i>
 {% endblock %}
 
-{% block method_badge %}
-<div class="method-hero__badge badge-enhanced"><i class="bi bi-sliders"></i> Método iterativo</div>
+{% block method_tags %}
+<span class="tag tag--method"><i class="bi bi-arrow-repeat"></i> Iterativo</span>
+<span class="tag tag--level"><i class="bi bi-mortarboard"></i> Básico</span>
+<span class="tag tag--type"><i class="bi bi-graph-down-arrow"></i> Descenso</span>
 {% endblock %}
 
 {% block method_description %}
-<p class="mb-2">Minimiza funciones suaves partiendo de un punto inicial y siguiendo la <strong>dirección de máximo descenso</strong>. Verás la trayectoria paso a paso hacia el mínimo.</p>
-<div class="method-hero-tags">
-  <span class="chip"><i class="bi bi-arrow-down"></i> ∇f(x)</span>
-  <span class="chip"><i class="bi bi-search"></i> Búsqueda de línea</span>
-  <span class="chip"><i class="bi bi-arrow-repeat"></i> Iterativo</span>
-</div>
+Minimiza funciones suaves siguiendo la <strong>dirección de máximo descenso</strong> $d_k = -\nabla f(x_k)$.
+En cada iteración actualiza $x_{k+1} = x_k + \alpha_k d_k$ donde $\alpha_k$ se determina mediante 
+<strong>búsqueda de línea</strong> (condición de Armijo). Ideal para visualizar el proceso de convergencia.
 {% endblock %}
 
 {% block method_stats %}
-<div class="stat-item"><span class="stat-label">Modo</span><span class="stat-value">Descenso iterativo</span></div>
-<div class="stat-item"><span class="stat-label">Entradas</span><span class="stat-value">f(x), x₀, tol</span></div>
-<div class="stat-item"><span class="stat-label">Salida</span><span class="stat-value">Trayectoria, x*, f*</span></div>
+<div class="stat-chip"><i class="bi bi-input-cursor-text"></i> <span>Entrada</span><strong>f(x), x₀</strong></div>
+<div class="stat-chip"><i class="bi bi-bullseye"></i> <span>Salida</span><strong>x*, trayectoria</strong></div>
+<div class="stat-chip"><i class="bi bi-speedometer2"></i> <span>Complejidad</span><strong>O(n) por iter</strong></div>
 {% endblock %}
 
-{% block method_form_required %}
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-function"></i> Función objetivo (SymPy)</label>
-  <textarea id="objective" class="form-control form-control--enhanced" rows="2" placeholder="(x-1)**2 + (y-2)**2">(x-1)**2 + (y-2)**2</textarea>
-  <div class="form-hint">Ejemplo: <code>(x-1)**2 + (y-2)**2</code> tiene mínimo en (1, 2)</div>
+{% block method_form %}
+<!-- Función objetivo -->
+<div class="form-group-modern mb-3">
+  <label class="form-label-modern">
+    <i class="bi bi-function"></i> Función objetivo $f(x)$
+    <span class="required-badge">Requerido</span>
+  </label>
+  <textarea id="objective" class="form-control form-control-modern" rows="2" placeholder="(x-1)**2 + (y-2)**2">(x-1)**2 + (y-2)**2</textarea>
+  <div class="form-hint"><i class="bi bi-info-circle"></i> Función diferenciable. Ej: <code>(x-1)**2 + (y-2)**2</code></div>
 </div>
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-list-ul"></i> Variables (separadas por coma)</label>
-  <input id="variables" class="form-control form-control--enhanced" placeholder="x, y" value="x, y">
+
+<!-- Variables -->
+<div class="form-group-modern mb-3">
+  <label class="form-label-modern">
+    <i class="bi bi-list-ul"></i> Variables de decisión
+    <span class="required-badge">Requerido</span>
+  </label>
+  <input id="variables" class="form-control form-control-modern" placeholder="x,y" value="x,y">
+  <div class="form-hint"><i class="bi bi-info-circle"></i> Separadas por coma.</div>
 </div>
+{% endblock %}
+
+{% block method_form_constraints %}
+<!-- Sin restricciones para gradiente -->
 {% endblock %}
 
 {% block method_form_optional %}
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-geo-alt"></i> Punto inicial x₀</label>
-  <input id="x0" class="form-control form-control--enhanced" placeholder="[0, 0]" value="[0, 0]">
-  <div class="form-hint">Vector de inicio, ej: <code>[0, 0]</code> o <code>[1.5, -2]</code></div>
-</div>
-<div class="row g-3">
-  <div class="col-md-6">
-    <div class="form-group-enhanced">
-      <label class="form-label form-label--enhanced"><i class="bi bi-bullseye"></i> Tolerancia</label>
-      <input id="tol" class="form-control form-control--enhanced" placeholder="1e-6" value="1e-6">
+<!-- Parámetros del algoritmo -->
+<div class="optional-params-section mt-3 pt-3 border-top">
+  <div class="optional-header mb-3">
+    <i class="bi bi-gear"></i>
+    <span>Parámetros del algoritmo</span>
+  </div>
+  
+  <div class="form-group-modern mb-3">
+    <label class="form-label-modern">
+      <i class="bi bi-geo-alt"></i> Punto inicial $x_0$
+    </label>
+    <input id="x0" class="form-control form-control-modern" placeholder="[0, 0]" value="[0, 0]">
+    <div class="form-hint"><i class="bi bi-info-circle"></i> Vector de inicio. Ej: <code>[0, 0]</code></div>
+  </div>
+  
+  <div class="row g-3">
+    <div class="col-6">
+      <div class="form-group-modern">
+        <label class="form-label-modern">
+          <i class="bi bi-bullseye"></i> Tolerancia $\epsilon$
+        </label>
+        <input id="tol" class="form-control form-control-modern" placeholder="1e-6" value="1e-6">
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="form-group-modern">
+        <label class="form-label-modern">
+          <i class="bi bi-arrow-repeat"></i> Iteraciones máx.
+        </label>
+        <input id="maxIter" class="form-control form-control-modern" placeholder="200" value="200">
+      </div>
     </div>
   </div>
-  <div class="col-md-6">
-    <div class="form-group-enhanced">
-      <label class="form-label form-label--enhanced"><i class="bi bi-arrow-repeat"></i> Iteraciones máx.</label>
-      <input id="maxIter" class="form-control form-control--enhanced" placeholder="200" value="200">
-    </div>
+</div>
+{% endblock %}
+
+{% block method_examples %}
+<div class="examples-section mt-4">
+  <div class="examples-header">
+    <i class="bi bi-lightning-charge"></i>
+    <span>Ejemplos típicos</span>
+  </div>
+  <div class="examples-grid">
+    <button class="example-btn" 
+            data-example="(x-1)**2 + (y-2)**2" 
+            data-vars="x,y" 
+            data-x0="[0, 0]">
+      <i class="bi bi-1-circle"></i> Paraboloide simple
+    </button>
+    <button class="example-btn" 
+            data-example="x**2 + 10*y**2" 
+            data-vars="x,y" 
+            data-x0="[5, 5]">
+      <i class="bi bi-2-circle"></i> Elipse alargada
+    </button>
+    <button class="example-btn" 
+            data-example="100*(y-x**2)**2 + (1-x)**2" 
+            data-vars="x,y" 
+            data-x0="[-1, 1]">
+      <i class="bi bi-3-circle"></i> Rosenbrock
+    </button>
+    <button class="example-btn" 
+            data-example="sin(x) + cos(y) + 0.1*(x**2 + y**2)" 
+            data-vars="x,y" 
+            data-x0="[1, 1]">
+      <i class="bi bi-4-circle"></i> Oscilante
+    </button>
   </div>
 </div>
+{% endblock %}
+
+{% block method_guide %}
+<li class="guide-item">
+  <span class="guide-number">1</span>
+  <span class="guide-text">Ingresa la función $f(x)$ diferenciable a minimizar.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">2</span>
+  <span class="guide-text">Define un punto inicial $x_0$ (puede afectar convergencia).</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">3</span>
+  <span class="guide-text">En cada iteración: $x_{k+1} = x_k - \alpha_k \nabla f(x_k)$.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">4</span>
+  <span class="guide-text">Se detiene cuando $\|\nabla f\| < \epsilon$ (tolerancia).</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">5</span>
+  <span class="guide-text">Visualiza la trayectoria y convergencia de $f(x_k)$.</span>
+</li>
 {% endblock %}
 
 {% block method_tips %}
-<li><i class="bi bi-lightning-charge text-warning"></i><span>Empieza con valores iniciales <strong>cercanos al óptimo</strong> para acelerar la convergencia.</span></li>
-<li><i class="bi bi-graph-up text-success"></i><span>Verifica que la función sea <strong>diferenciable</strong> en el dominio estudiado.</span></li>
-<li><i class="bi bi-magic text-info"></i><span>Usa funciones SymPy como <code>sin(x)</code>, <code>exp(y)</code>, <code>log(x)</code>.</span></li>
+<div class="tips-box mt-3">
+  <div class="tips-box__header"><i class="bi bi-lightbulb"></i> Búsqueda de línea (Armijo)</div>
+  <div class="tips-box__content">
+    El paso $\alpha_k$ se elige para satisfacer la <strong>condición de Armijo</strong>:
+    $$f(x_k + \alpha d_k) \leq f(x_k) + c_1 \alpha \nabla f(x_k)^T d_k$$
+    donde $c_1 \approx 10^{-4}$. Esto garantiza <strong>descenso suficiente</strong> en cada iteración.
+  </div>
+</div>
 {% endblock %}
 
-{% block method_primary_button %}<i class="bi bi-play-fill me-1"></i> Resolver Gradiente{% endblock %}
+{% block iterations_title %}Tabla de iteraciones{% endblock %}
+{% block iterations_subtitle %}Evolución del algoritmo de descenso por gradiente{% endblock %}
+
+{% block iterations_content %}
+<div class="iterations-wrapper">
+  <div class="table-responsive table-modern">
+    <table class="table table-iterations">
+      <thead>
+        <tr>
+          <th><span class="th-content">$k$</span></th>
+          <th><span class="th-content">$x_k$</span></th>
+          <th><span class="th-content">$f(x_k)$</span></th>
+          <th><span class="th-content">$\|\nabla f\|$</span></th>
+          <th><span class="th-content">$\alpha_k$</span></th>
+        </tr>
+      </thead>
+      <tbody id="iters">
+        <tr class="placeholder-row">
+          <td colspan="5">
+            <div class="table-placeholder">
+              <i class="bi bi-clock-history"></i>
+              <span>Las iteraciones aparecerán aquí después de resolver.</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Detalle de búsqueda de línea -->
+<div class="line-search-section mt-4" id="lineSearchSection">
+  <div class="subsection-header">
+    <i class="bi bi-search"></i>
+    <h6 class="subsection-title">Búsqueda de línea (Armijo Backtracking)</h6>
+  </div>
+  <div id="lineSearchDetails" class="line-search-content">
+    <div class="placeholder-box placeholder-box--small">
+      <i class="bi bi-signpost-split"></i>
+      <span>El detalle de la búsqueda de línea aparecerá aquí.</span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block visualizations_content %}
+<div class="viz-card" id="plotContour">
+  <div class="viz-card__header">
+    <i class="bi bi-layers"></i>
+    <span>Curvas de nivel + Trayectoria</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-arrow-right"></i>
+      <span>Trayectoria $x_0 \to x_1 \to \cdots \to x^*$ sobre curvas de nivel</span>
+    </div>
+  </div>
+</div>
+
+<div class="viz-card" id="plotSurface">
+  <div class="viz-card__header">
+    <i class="bi bi-box"></i>
+    <span>Superficie 3D + Camino</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-badge-3d"></i>
+      <span>Superficie de f(x,y) con el camino de descenso</span>
+    </div>
+  </div>
+</div>
+
+<div class="viz-card" id="plotFx">
+  <div class="viz-card__header">
+    <i class="bi bi-graph-down"></i>
+    <span>Convergencia $f(x_k)$</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-activity"></i>
+      <span>Gráfica de $f(x_k)$ vs iteración $k$</span>
+    </div>
+  </div>
+</div>
+{% endblock %}

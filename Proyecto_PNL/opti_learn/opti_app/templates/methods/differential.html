@@ -1,50 +1,239 @@
 {% extends "methods/base.html" %}
 
+{% block hero_color_class %}hero-card--differential{% endblock %}
+
 {% block method_icon %}
-<i class="bi bi-calculator"></i>
+<i class="bi bi-calculator-fill"></i>
 {% endblock %}
 
-{% block method_badge %}
-<div class="method-hero__badge badge-enhanced"><i class="bi bi-infinity"></i> Sin restricciones</div>
+{% block method_tags %}
+<span class="tag tag--method"><i class="bi bi-infinity"></i> Sin restricciones</span>
+<span class="tag tag--level"><i class="bi bi-mortarboard"></i> Básico</span>
+<span class="tag tag--type"><i class="bi bi-calculator"></i> Analítico</span>
 {% endblock %}
 
 {% block method_description %}
-<p class="mb-2">Encuentra puntos críticos usando <strong>derivadas parciales</strong> y clasifícalos con el <strong>Hessiano</strong>. Ideal para aprender los fundamentos del cálculo diferencial aplicado a optimización.</p>
-<div class="method-hero-tags">
-  <span class="chip"><i class="bi bi-vector-pen"></i> ∇f = 0</span>
-  <span class="chip"><i class="bi bi-grid-3x3"></i> Hessiano</span>
-  <span class="chip"><i class="bi bi-bullseye"></i> Min/Max/Silla</span>
-</div>
+Encuentra <strong>puntos críticos</strong> resolviendo $\nabla f = 0$ y clasifícalos usando la <strong>matriz Hessiana</strong> $H_f$.
+Método fundamental para optimización sin restricciones que determina si cada punto es <strong>mínimo local</strong>, 
+<strong>máximo local</strong> o <strong>punto silla</strong>.
 {% endblock %}
 
 {% block method_stats %}
-<div class="stat-item"><span class="stat-label">Tipo</span><span class="stat-value">Cálculo diferencial</span></div>
-<div class="stat-item"><span class="stat-label">Aplicación</span><span class="stat-value">1-3 variables</span></div>
-<div class="stat-item"><span class="stat-label">Salida</span><span class="stat-value">Puntos clasificados</span></div>
+<div class="stat-chip"><i class="bi bi-input-cursor-text"></i> <span>Entrada</span><strong>f(x)</strong></div>
+<div class="stat-chip"><i class="bi bi-bullseye"></i> <span>Salida</span><strong>x*, tipo</strong></div>
+<div class="stat-chip"><i class="bi bi-grid-3x3"></i> <span>Análisis</span><strong>Hessiano</strong></div>
 {% endblock %}
 
-{% block method_form_required %}
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-function"></i> Función objetivo (SymPy)</label>
-  <textarea id="objective" class="form-control form-control--enhanced" rows="2" placeholder="x**2 + y**2 - 2*x - 4*y + 5">x**2 + y**2 - 2*x - 4*y + 5</textarea>
-  <div class="form-hint">Ejemplo: <code>x**3 - 3*x</code> o <code>x**2 + y**2 - 2*x*y</code></div>
+{% block method_form %}
+<!-- Función objetivo -->
+<div class="form-group-modern mb-3">
+  <label class="form-label-modern">
+    <i class="bi bi-function"></i> Función objetivo $f(x)$
+    <span class="required-badge">Requerido</span>
+  </label>
+  <textarea id="objective" class="form-control form-control-modern" rows="2" placeholder="x**2 + y**2 - 2*x - 4*y + 5">x**2 + y**2 - 2*x - 4*y + 5</textarea>
+  <div class="form-hint"><i class="bi bi-info-circle"></i> Función a analizar. Ej: <code>x**3 - 3*x</code></div>
 </div>
-<div class="form-group-enhanced mb-3">
-  <label class="form-label form-label--enhanced"><i class="bi bi-list-ul"></i> Variables (separadas por coma)</label>
-  <input id="variables" class="form-control form-control--enhanced" placeholder="x, y" value="x, y">
+
+<!-- Variables -->
+<div class="form-group-modern mb-3">
+  <label class="form-label-modern">
+    <i class="bi bi-list-ul"></i> Variables de decisión
+    <span class="required-badge">Requerido</span>
+  </label>
+  <input id="variables" class="form-control form-control-modern" placeholder="x,y" value="x,y">
+  <div class="form-hint"><i class="bi bi-info-circle"></i> Separadas por coma. Ej: <code>x</code> o <code>x,y</code></div>
 </div>
+{% endblock %}
+
+{% block method_form_constraints %}
+<!-- No hay restricciones en método diferencial -->
 {% endblock %}
 
 {% block method_form_optional %}
-<div class="text-muted small">
-  <i class="bi bi-info-circle me-1"></i> Este método no requiere parámetros adicionales.
+<!-- Sin parámetros opcionales -->
+<div class="optional-params mt-3">
+  <div class="form-hint text-center">
+    <i class="bi bi-gear"></i> Este método analítico no requiere parámetros adicionales.
+  </div>
 </div>
 {% endblock %}
 
-{% block method_tips %}
-<li><i class="bi bi-braces text-primary"></i><span>Usa notación SymPy: <code>x**2</code> para x², <code>sin(x)</code>, <code>exp(x)</code>.</span></li>
-<li><i class="bi bi-bullseye text-success"></i><span>El solver mostrará si cada punto crítico es <strong>mínimo</strong>, <strong>máximo</strong> o <strong>silla</strong>.</span></li>
-<li><i class="bi bi-clipboard-data text-info"></i><span>Para 2 variables verás gráficas de curvas de nivel y superficie 3D.</span></li>
+{% block method_examples %}
+<div class="examples-section mt-4">
+  <div class="examples-header">
+    <i class="bi bi-lightning-charge"></i>
+    <span>Ejemplos típicos</span>
+  </div>
+  <div class="examples-grid">
+    <button class="example-btn" 
+            data-example="x**2 + y**2 - 2*x - 4*y + 5" 
+            data-vars="x,y">
+      <i class="bi bi-1-circle"></i> Paraboloide
+    </button>
+    <button class="example-btn" 
+            data-example="x**3 - 3*x" 
+            data-vars="x">
+      <i class="bi bi-2-circle"></i> Cúbica (1 var)
+    </button>
+    <button class="example-btn" 
+            data-example="x**2 - y**2" 
+            data-vars="x,y">
+      <i class="bi bi-3-circle"></i> Punto silla
+    </button>
+    <button class="example-btn" 
+            data-example="sin(x)*cos(y)" 
+            data-vars="x,y">
+      <i class="bi bi-4-circle"></i> Trigonométrica
+    </button>
+    <button class="example-btn" 
+            data-example="x**4 - 2*x**2 + y**2" 
+            data-vars="x,y">
+      <i class="bi bi-5-circle"></i> Múltiples críticos
+    </button>
+  </div>
+</div>
 {% endblock %}
 
-{% block method_primary_button %}<i class="bi bi-play-fill me-1"></i> Resolver Diferencial{% endblock %}
+{% block method_guide %}
+<li class="guide-item">
+  <span class="guide-number">1</span>
+  <span class="guide-text">Ingresa la función $f(x)$ sin restricciones.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">2</span>
+  <span class="guide-text">El solver calcula el gradiente $\nabla f$ y resuelve $\nabla f = 0$.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">3</span>
+  <span class="guide-text">Calcula la matriz Hessiana $H_f$ en cada punto crítico.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">4</span>
+  <span class="guide-text">Analiza los menores principales o eigenvalores de $H_f$.</span>
+</li>
+<li class="guide-item">
+  <span class="guide-number">5</span>
+  <span class="guide-text">Clasifica: definida positiva → mínimo, negativa → máximo, indefinida → silla.</span>
+</li>
+{% endblock %}
+
+{% block method_tips %}
+<div class="tips-box mt-3">
+  <div class="tips-box__header"><i class="bi bi-lightbulb"></i> Criterio de clasificación</div>
+  <div class="tips-box__content">
+    <ul class="mb-0 ps-3">
+      <li>$H_f$ <strong>definida positiva</strong>: todos los eigenvalores $> 0$ → <strong>mínimo local</strong></li>
+      <li>$H_f$ <strong>definida negativa</strong>: todos los eigenvalores $< 0$ → <strong>máximo local</strong></li>
+      <li>$H_f$ <strong>indefinida</strong>: eigenvalores de signos mixtos → <strong>punto silla</strong></li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block iterations_title %}Análisis de puntos críticos{% endblock %}
+{% block iterations_subtitle %}Clasificación mediante el criterio del Hessiano{% endblock %}
+
+{% block iterations_content %}
+<div class="differential-analysis-section">
+  <!-- Gradiente -->
+  <div class="analysis-card mb-3">
+    <div class="subsection-header">
+      <i class="bi bi-arrow-right"></i>
+      <h6 class="subsection-title">Gradiente $\nabla f$</h6>
+    </div>
+    <div id="gradientContent" class="analysis-content">
+      <div class="placeholder-box placeholder-box--small">
+        <i class="bi bi-vector-pen"></i>
+        <span>El vector gradiente aparecerá aquí después de resolver.</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Hessiano -->
+  <div class="analysis-card mb-3">
+    <div class="subsection-header">
+      <i class="bi bi-grid-3x3"></i>
+      <h6 class="subsection-title">Matriz Hessiana $H_f$</h6>
+    </div>
+    <div id="hessianContent" class="analysis-content">
+      <div class="placeholder-box placeholder-box--small">
+        <i class="bi bi-table"></i>
+        <span>La matriz Hessiana aparecerá aquí después de resolver.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla de puntos críticos -->
+<div class="critical-points-section mt-4">
+  <div class="subsection-header">
+    <i class="bi bi-geo-alt"></i>
+    <h6 class="subsection-title">Puntos críticos clasificados</h6>
+  </div>
+  <div class="table-responsive table-modern mt-3">
+    <table class="table table-iterations">
+      <thead>
+        <tr>
+          <th><span class="th-content">#</span></th>
+          <th><span class="th-content">$x^*$</span></th>
+          <th><span class="th-content">$f(x^*)$</span></th>
+          <th><span class="th-content">$\det(H_f)$</span></th>
+          <th><span class="th-content">Clasificación</span></th>
+        </tr>
+      </thead>
+      <tbody id="iters">
+        <tr class="placeholder-row">
+          <td colspan="5">
+            <div class="table-placeholder">
+              <i class="bi bi-crosshair"></i>
+              <span>Los puntos críticos clasificados aparecerán aquí.</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block visualizations_content %}
+<div class="viz-card" id="plotContour">
+  <div class="viz-card__header">
+    <i class="bi bi-layers"></i>
+    <span>Curvas de nivel + Puntos críticos</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-bullseye"></i>
+      <span>Contorno con puntos críticos marcados según su tipo</span>
+    </div>
+  </div>
+</div>
+
+<div class="viz-card" id="plotSurface">
+  <div class="viz-card__header">
+    <i class="bi bi-box"></i>
+    <span>Superficie 3D</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-badge-3d"></i>
+      <span>Superficie de f(x,y) con puntos críticos señalados</span>
+    </div>
+  </div>
+</div>
+
+<div class="viz-card" id="plotFx">
+  <div class="viz-card__header">
+    <i class="bi bi-graph-down"></i>
+    <span>Función 1D (si aplica)</span>
+  </div>
+  <div class="viz-card__body">
+    <div class="viz-placeholder">
+      <i class="bi bi-activity"></i>
+      <span>Gráfica de f(x) para funciones de una variable</span>
+    </div>
+  </div>
+</div>
+{% endblock %}

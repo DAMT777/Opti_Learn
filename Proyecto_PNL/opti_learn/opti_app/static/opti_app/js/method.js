@@ -7,6 +7,7 @@ const sections = {
   errors: el('#methodErrors'),
   iterations: el('#iters'),
   lineSearch: el('#lineSearchDetails'),
+  solverStatus: el('#solverStatus'),
   plots: {
     contour: el('#plotContour'),
     surface: el('#plotSurface'),
@@ -32,110 +33,165 @@ function renderMarkdownToHTML(text){
   return String(text || '').replace(/</g,'&lt;');
 }
 
-function buildMetricsHtml(method, meta){
-  const formatVal = (v) => typeof v === 'number' ? v.toFixed(6) : (v ?? '-');
-  
+// Construir tarjetas de métricas para la sección de resultados principales
+function buildResultCardsHtml(method, meta){
+  const formatVal = (v) => {
+    if(v === null || v === undefined) return '—';
+    if(typeof v === 'number') {
+      const abs = Math.abs(v);
+      if(abs >= 1e4 || (abs > 0 && abs < 1e-3)) return v.toExponential(4);
+      return v.toFixed(6);
+    }
+    if(Array.isArray(v)) return `[${v.map(x => typeof x === 'number' ? x.toFixed(4) : x).join(', ')}]`;
+    return String(v);
+  };
+
   switch(method){
     case 'lagrange':
       return `
-        <div class="metric">
-          <div class="metric__label">f*</div>
-          <div class="metric__value">${formatVal(meta.f_star)}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">x*</div>
-          <div class="metric__value small">${JSON.stringify(meta.x_star)}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">λ*</div>
-          <div class="metric__value small">${JSON.stringify(meta.lambda_star)}</div>
+        <div class="results-grid">
+          <div class="result-card result-card--point">
+            <div class="result-card__icon"><i class="bi bi-geo-alt-fill"></i></div>
+            <div class="result-card__label">Punto óptimo $x^*$</div>
+            <div class="result-card__value">${formatVal(meta.x_star)}</div>
+          </div>
+          <div class="result-card result-card--optimal">
+            <div class="result-card__icon"><i class="bi bi-trophy-fill"></i></div>
+            <div class="result-card__label">Valor óptimo $f^*$</div>
+            <div class="result-card__value">${formatVal(meta.f_star)}</div>
+          </div>
+          <div class="result-card result-card--lambda">
+            <div class="result-card__icon"><i class="bi bi-lightning-fill"></i></div>
+            <div class="result-card__label">Multiplicadores $\\lambda^*$</div>
+            <div class="result-card__value">${formatVal(meta.lambda_star)}</div>
+          </div>
         </div>
       `;
       
     case 'differential':
       return `
-        <div class="metric">
-          <div class="metric__label">Naturaleza</div>
-          <div class="metric__value">${meta.nature || '-'}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">Punto óptimo</div>
-          <div class="metric__value small">${JSON.stringify(meta.optimal_point)}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">Valor óptimo</div>
-          <div class="metric__value">${formatVal(meta.optimal_value)}</div>
+        <div class="results-grid">
+          <div class="result-card result-card--point">
+            <div class="result-card__icon"><i class="bi bi-geo-alt-fill"></i></div>
+            <div class="result-card__label">Punto crítico $x^*$</div>
+            <div class="result-card__value">${formatVal(meta.optimal_point)}</div>
+          </div>
+          <div class="result-card result-card--optimal">
+            <div class="result-card__icon"><i class="bi bi-bullseye"></i></div>
+            <div class="result-card__label">Valor $f(x^*)$</div>
+            <div class="result-card__value">${formatVal(meta.optimal_value)}</div>
+          </div>
+          <div class="result-card result-card--type">
+            <div class="result-card__icon"><i class="bi bi-tag-fill"></i></div>
+            <div class="result-card__label">Clasificación</div>
+            <div class="result-card__value">${meta.nature || '—'}</div>
+          </div>
         </div>
       `;
       
     case 'kkt':
       return `
-        <div class="metric">
-          <div class="metric__label">f*</div>
-          <div class="metric__value">${formatVal(meta.f_star)}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">x*</div>
-          <div class="metric__value small">${JSON.stringify(meta.x_star)}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">λ* (igual.)</div>
-          <div class="metric__value small">${JSON.stringify(meta.lambda_eq || [])}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">μ* (desig.)</div>
-          <div class="metric__value small">${JSON.stringify(meta.mu_ineq || [])}</div>
+        <div class="results-grid">
+          <div class="result-card result-card--point">
+            <div class="result-card__icon"><i class="bi bi-geo-alt-fill"></i></div>
+            <div class="result-card__label">Punto óptimo $x^*$</div>
+            <div class="result-card__value">${formatVal(meta.x_star)}</div>
+          </div>
+          <div class="result-card result-card--optimal">
+            <div class="result-card__icon"><i class="bi bi-trophy-fill"></i></div>
+            <div class="result-card__label">Valor óptimo $f^*$</div>
+            <div class="result-card__value">${formatVal(meta.f_star)}</div>
+          </div>
+          <div class="result-card result-card--lambda">
+            <div class="result-card__icon"><i class="bi bi-lock-fill"></i></div>
+            <div class="result-card__label">$\\lambda$ (igualdad)</div>
+            <div class="result-card__value">${formatVal(meta.lambda_eq || [])}</div>
+          </div>
+          <div class="result-card result-card--type">
+            <div class="result-card__icon"><i class="bi bi-shield-check"></i></div>
+            <div class="result-card__label">$\\mu$ (desigualdad)</div>
+            <div class="result-card__value">${formatVal(meta.mu_ineq || [])}</div>
+          </div>
         </div>
       `;
       
     case 'gradient':
+      // Extraer el conteo de iteraciones y la norma final del gradiente
+      const iterCount = meta.iterations_count ?? (Array.isArray(meta.iterations) ? meta.iterations.length : 0);
+      let gradNormFinal = meta.grad_norm;
+      // Si no viene grad_norm, intentar obtenerlo de la última iteración
+      if((gradNormFinal === undefined || gradNormFinal === null) && Array.isArray(meta.iterations) && meta.iterations.length > 0){
+        const lastIter = meta.iterations[meta.iterations.length - 1];
+        gradNormFinal = lastIter.grad_norm ?? lastIter.norma_grad;
+      }
+      
       return `
-        <div class="metric">
-          <div class="metric__label">f*</div>
-          <div class="metric__value">${formatVal(meta.f_star)}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">x*</div>
-          <div class="metric__value small">${JSON.stringify(meta.x_star)}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">Iteraciones</div>
-          <div class="metric__value">${meta.iterations ?? '-'}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">‖∇f‖</div>
-          <div class="metric__value">${formatVal(meta.grad_norm)}</div>
+        <div class="results-grid">
+          <div class="result-card result-card--point">
+            <div class="result-card__icon"><i class="bi bi-geo-alt-fill"></i></div>
+            <div class="result-card__label">Punto óptimo $x^*$</div>
+            <div class="result-card__value">${formatVal(meta.x_star)}</div>
+          </div>
+          <div class="result-card result-card--optimal">
+            <div class="result-card__icon"><i class="bi bi-trophy-fill"></i></div>
+            <div class="result-card__label">Valor óptimo $f^*$</div>
+            <div class="result-card__value">${formatVal(meta.f_star)}</div>
+          </div>
+          <div class="result-card result-card--type">
+            <div class="result-card__icon"><i class="bi bi-arrow-repeat"></i></div>
+            <div class="result-card__label">Iteraciones</div>
+            <div class="result-card__value">${iterCount}</div>
+          </div>
+          <div class="result-card result-card--lambda">
+            <div class="result-card__icon"><i class="bi bi-speedometer2"></i></div>
+            <div class="result-card__label">$\\|\\nabla f\\|$ final</div>
+            <div class="result-card__value">${formatVal(gradNormFinal)}</div>
+          </div>
         </div>
       `;
       
     case 'qp':
       return `
-        <div class="metric">
-          <div class="metric__label">f*</div>
-          <div class="metric__value">${formatVal(meta.f_star)}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">x*</div>
-          <div class="metric__value small">${JSON.stringify(meta.x_star)}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">Tipo</div>
-          <div class="metric__value">${meta.problem_type || 'QP'}</div>
+        <div class="results-grid">
+          <div class="result-card result-card--point">
+            <div class="result-card__icon"><i class="bi bi-geo-alt-fill"></i></div>
+            <div class="result-card__label">Punto óptimo $x^*$</div>
+            <div class="result-card__value">${formatVal(meta.x_star)}</div>
+          </div>
+          <div class="result-card result-card--optimal">
+            <div class="result-card__icon"><i class="bi bi-trophy-fill"></i></div>
+            <div class="result-card__label">Valor óptimo $f^*$</div>
+            <div class="result-card__value">${formatVal(meta.f_star)}</div>
+          </div>
+          <div class="result-card result-card--type">
+            <div class="result-card__icon"><i class="bi bi-check2-circle"></i></div>
+            <div class="result-card__label">Tipo de problema</div>
+            <div class="result-card__value">${meta.problem_type || 'QP'}</div>
+          </div>
         </div>
       `;
       
     default:
       return `
-        <div class="metric">
-          <div class="metric__label">f*</div>
-          <div class="metric__value">${formatVal(meta.f_star)}</div>
-        </div>
-        <div class="metric">
-          <div class="metric__label">x*</div>
-          <div class="metric__value small">${JSON.stringify(meta.x_star)}</div>
+        <div class="results-grid">
+          <div class="result-card result-card--point">
+            <div class="result-card__icon"><i class="bi bi-geo-alt-fill"></i></div>
+            <div class="result-card__label">Punto óptimo $x^*$</div>
+            <div class="result-card__value">${formatVal(meta.x_star)}</div>
+          </div>
+          <div class="result-card result-card--optimal">
+            <div class="result-card__icon"><i class="bi bi-trophy-fill"></i></div>
+            <div class="result-card__label">Valor óptimo $f^*$</div>
+            <div class="result-card__value">${formatVal(meta.f_star)}</div>
+          </div>
         </div>
       `;
   }
+}
+
+// Mantener compatibilidad con la versión anterior
+function buildMetricsHtml(method, meta){
+  return buildResultCardsHtml(method, meta);
 }
 
 function formatNumber(value){
@@ -287,20 +343,76 @@ function showMethodError(message){
   }
 }
 
+// ============================================================================
+// RENDERIZADO DE SECCIONES DE RESULTADOS V3
+// ============================================================================
+
 function setResultSections(mainHtml, detailsHtml, interpretationHtml){
-  if(sections.resultMain) sections.resultMain.innerHTML = mainHtml || '<div class="text-muted">Sin resultados.</div>';
-  if(sections.resultDetails) sections.resultDetails.innerHTML = detailsHtml || '';
+  // Sección de resultados principales (métricas/cards)
+  if(sections.resultMain){
+    sections.resultMain.innerHTML = mainHtml || '<div class="text-muted p-3">Ejecuta el método para ver resultados.</div>';
+  }
+  
+  // Sección de procedimiento/detalles (en la nueva estructura va en #resultProcedure o #resultDetails)
+  const procedureSection = el('#resultProcedure') || sections.resultDetails;
+  if(procedureSection && detailsHtml){
+    procedureSection.innerHTML = detailsHtml;
+  }
+  
+  // Sección de interpretación pedagógica
   if(sections.resultInterpretation){
     const hasContent = Boolean(interpretationHtml);
     sections.resultInterpretation.innerHTML = hasContent
       ? renderMarkdownToHTML(interpretationHtml)
-      : '<div class="text-muted">Sin interpretacion.</div>';
-    try{
-      if(window.MathJax && window.MathJax.typesetPromise){
-        window.MathJax.typesetPromise([sections.resultInterpretation]);
-      }
-    }catch{}
+      : '<div class="text-muted">Esperando explicación pedagógica...</div>';
+    
+    // Activar la sección si hay contenido
+    const solutionSection = el('.method-solution-section');
+    if(solutionSection && hasContent){
+      solutionSection.classList.add('has-results');
+    }
   }
+  
+  // Actualizar estado del solver
+  if(sections.solverStatus){
+    const hasResults = mainHtml && mainHtml.includes('result-card');
+    sections.solverStatus.innerHTML = hasResults 
+      ? '<span class="status-badge status-badge--success"><i class="bi bi-check-circle"></i> Resuelto</span>'
+      : '<span class="status-badge status-badge--pending"><i class="bi bi-clock"></i> Pendiente</span>';
+  }
+  
+  // Re-renderizar MathJax en todas las secciones actualizadas
+  try{
+    if(window.MathJax && window.MathJax.typesetPromise){
+      const elementsToTypeset = [
+        sections.resultMain,
+        sections.resultInterpretation,
+        procedureSection
+      ].filter(Boolean);
+      
+      if(elementsToTypeset.length){
+        window.MathJax.typesetPromise(elementsToTypeset);
+      }
+    }
+  }catch(e){
+    console.error('Error al procesar MathJax:', e);
+  }
+}
+
+// Renderizar explicación pedagógica con formato mejorado
+function renderPedagogicalExplanation(explanation, method){
+  if(!explanation) return '';
+  
+  // Procesar Markdown a HTML con soporte para bloques especiales
+  let html = renderMarkdownToHTML(explanation);
+  
+  // Añadir iconos y estilos a secciones clave
+  html = html
+    .replace(/<h4>(.*?Paso\s*\d+.*?)<\/h4>/gi, '<h4 class="step-heading"><i class="bi bi-arrow-right-circle"></i> $1</h4>')
+    .replace(/<strong>(Resultado|Solución|Óptimo|Conclusión):/gi, '<strong class="result-label"><i class="bi bi-check2-circle"></i> $1:')
+    .replace(/<strong>(Nota|Importante|Advertencia):/gi, '<strong class="note-label"><i class="bi bi-info-circle"></i> $1:');
+  
+  return html;
 }
 
 function resetOutputs(){
@@ -423,8 +535,8 @@ async function solve(){
 
   // Mostrar loading
   setResultSections(
-    '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>',
-    'Resolviendo paso a paso...',
+    '<div class="loading-state"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><span class="ms-2">Resolviendo...</span></div>',
+    '',
     ''
   );
 
@@ -446,27 +558,59 @@ async function solve(){
       return;
     }
 
-    // Renderizar explicación pedagógica (Markdown con LaTeX)
-    const explanationHtml = renderMarkdownToHTML(result.explanation);
-    
     // Construir métricas principales según el método
     const meta = result.metadata || {};
-    let metricsHtml = buildMetricsHtml(method, meta);
+    let metricsHtml = buildResultCardsHtml(method, meta);
 
-    // Mostrar resultados
-    setResultSections(metricsHtml, '', explanationHtml);
+    // Renderizar explicación pedagógica completa
+    const explanationHtml = renderPedagogicalExplanation(result.explanation, method);
     
-    // Renderizar gráficas si existen
+    // Construir detalles del procedimiento si existen
+    let procedureHtml = '';
+    if(meta.steps || meta.procedure){
+      procedureHtml = renderProcedureSteps(meta.steps || meta.procedure);
+    }
+
+    // Mostrar resultados en las secciones correspondientes
+    setResultSections(metricsHtml, procedureHtml, explanationHtml);
+    
+    // Renderizar gráficas si existen (estáticas PNG/JPG)
     if(meta.plot_2d_path || meta.plot_3d_path){
       renderStaticPlots(meta.plot_2d_path, meta.plot_3d_path);
     }
+    
+    // Renderizar gráficas interactivas si existen plot_data (para gradient)
+    if(meta.plot_data){
+      renderMethodPlots(meta.plot_data);
+    }
+    
+    // Renderizar según el método
+    if(method === 'lagrange'){
+      // Renderizar puntos críticos de Lagrange
+      renderLagrangeCriticalPoints(
+        meta.critical_points,
+        meta.x_star,
+        meta.f_star,
+        meta.lambda_star,
+        meta.nature
+      );
+    } else if(method === 'differential' && meta.critical_points && sections.iterations){
+      // Renderizar tabla de puntos críticos para differential
+      renderCriticalPointsTable(meta.critical_points);
+    } else {
+      // Renderizar iteraciones si existen (para gradient) - buscar en metadata
+      const iterations = meta.iterations || result.iterations || [];
+      if(Array.isArray(iterations) && iterations.length > 0){
+        renderMethodIterations(iterations);
+      }
+    }
 
-    // Procesar LaTeX con MathJax
+    // Procesar LaTeX con MathJax en todas las secciones
     if(window.MathJax && window.MathJax.typesetPromise){
       setTimeout(() => {
-        const resultDetails = el('#resultDetails');
-        if(resultDetails){
-          window.MathJax.typesetPromise([resultDetails]).catch(err => console.error('MathJax error:', err));
+        const elementsToTypeset = document.querySelectorAll('.method-solution-section, .method-iterations-section, .result-card');
+        if(elementsToTypeset.length){
+          window.MathJax.typesetPromise([...elementsToTypeset]).catch(err => console.error('MathJax error:', err));
         }
       }, 100);
     }
@@ -479,17 +623,153 @@ async function solve(){
   }
 }
 
+// Función para renderizar pasos del procedimiento
+function renderProcedureSteps(steps){
+  if(!steps || !Array.isArray(steps) || steps.length === 0) return '';
+  
+  let html = '<div class="procedure-steps">';
+  steps.forEach((step, idx) => {
+    html += `
+      <div class="procedure-step">
+        <div class="procedure-step__number">${idx + 1}</div>
+        <div class="procedure-step__content">
+          <div class="procedure-step__title">${step.title || ''}</div>
+          <div class="procedure-step__description">${renderMarkdownToHTML(step.description || step)}</div>
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  return html;
+}
+
+// Función para renderizar tabla de puntos críticos (differential)
+function renderCriticalPointsTable(criticalPoints){
+  if(!sections.iterations || !Array.isArray(criticalPoints)) return;
+  
+  let html = `
+    <table class="table table-sm table-striped iterations-table">
+      <thead>
+        <tr>
+          <th>Punto</th>
+          <th>Coordenadas</th>
+          <th>$f(x^*)$</th>
+          <th>Clasificación</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  
+  criticalPoints.forEach((cp, idx) => {
+    const badgeClass = {
+      'mínimo': 'bg-success',
+      'máximo': 'bg-danger',
+      'silla': 'bg-warning text-dark',
+      'indeterminado': 'bg-secondary'
+    }[cp.nature?.toLowerCase()] || 'bg-secondary';
+    
+    html += `
+      <tr>
+        <td><strong>P${idx + 1}</strong></td>
+        <td><code>${formatPoint(cp.point)}</code></td>
+        <td>${formatNumber(cp.value)}</td>
+        <td><span class="badge ${badgeClass}">${cp.nature || '—'}</span></td>
+      </tr>
+    `;
+  });
+  
+  html += '</tbody></table>';
+  sections.iterations.innerHTML = html;
+  
+  // Re-renderizar MathJax
+  if(window.MathJax && window.MathJax.typesetPromise){
+    window.MathJax.typesetPromise([sections.iterations]);
+  }
+}
+
+// Formatea un punto como string
+function formatPoint(point){
+  if(!point) return '—';
+  if(Array.isArray(point)){
+    return `(${point.map(v => typeof v === 'number' ? v.toFixed(4) : v).join(', ')})`;
+  }
+  if(typeof point === 'object'){
+    // Objeto como {x: val, y: val}
+    const vals = Object.values(point).map(v => typeof v === 'number' ? v.toFixed(4) : v);
+    return `(${vals.join(', ')})`;
+  }
+  return String(point);
+}
+
 // Función auxiliar para renderizar gráficas estáticas (PNG/JPG)
 function renderStaticPlots(plot2dPath, plot3dPath){
   const plotContour = el('#plotContour');
   const plotSurface = el('#plotSurface');
   
   if(plotContour && plot2dPath){
-    plotContour.innerHTML = `<img src="${plot2dPath}" alt="Gráfica 2D" style="max-width: 100%; height: auto; border-radius: 8px;">`;
+    // Buscar el body dentro del viz-card, o usar todo el elemento
+    const body = plotContour.querySelector('.viz-card__body') || plotContour;
+    body.innerHTML = `<img src="${plot2dPath}" alt="Gráfica 2D" style="max-width: 100%; height: auto; border-radius: 8px; display: block;">`;
   }
   
   if(plotSurface && plot3dPath){
-    plotSurface.innerHTML = `<img src="${plot3dPath}" alt="Gráfica 3D" style="max-width: 100%; height: auto; border-radius: 8px;">`;
+    const body = plotSurface.querySelector('.viz-card__body') || plotSurface;
+    body.innerHTML = `<img src="${plot3dPath}" alt="Gráfica 3D" style="max-width: 100%; height: auto; border-radius: 8px; display: block;">`;
+  }
+}
+
+// Función para renderizar puntos críticos de Lagrange
+function renderLagrangeCriticalPoints(criticalPoints, xStar, fStar, lambdaStar, nature){
+  if(!sections.iterations) return;
+  
+  // Limpiar contenido anterior
+  sections.iterations.innerHTML = '';
+  
+  // Si hay punto óptimo, mostrar en la tabla
+  if(xStar || (criticalPoints && criticalPoints.length > 0)){
+    const points = criticalPoints && criticalPoints.length > 0 
+      ? criticalPoints 
+      : [{ point: xStar, value: fStar, lambda: lambdaStar, nature: nature || 'óptimo' }];
+    
+    points.forEach((cp, idx) => {
+      const tr = document.createElement('tr');
+      
+      // Determinar los valores
+      const pointVal = cp.point || cp.x || xStar;
+      const lambdaVal = cp.lambda || cp.lambda_star || lambdaStar;
+      const fVal = cp.value || cp.f || fStar;
+      const pointNature = cp.nature || nature || '—';
+      
+      // Badge de clasificación
+      const badgeClass = {
+        'mínimo': 'bg-success',
+        'máximo': 'bg-danger',
+        'silla': 'bg-warning text-dark',
+        'óptimo': 'bg-primary'
+      }[pointNature?.toLowerCase()] || 'bg-secondary';
+      
+      tr.innerHTML = `
+        <td><strong>P${idx + 1}</strong></td>
+        <td><code>${formatPoint(pointVal)}</code></td>
+        <td><code>${formatPoint(lambdaVal)}</code></td>
+        <td>${formatNumber(fVal)}</td>
+        <td><span class="badge ${badgeClass}">${pointNature}</span></td>
+      `;
+      sections.iterations.appendChild(tr);
+    });
+  } else {
+    sections.iterations.innerHTML = `
+      <tr>
+        <td colspan="5" class="text-center text-muted">
+          <i class="bi bi-info-circle"></i> No se encontraron puntos críticos
+        </td>
+      </tr>
+    `;
+  }
+  
+  // Re-renderizar MathJax
+  if(window.MathJax && window.MathJax.typesetPromise){
+    window.MathJax.typesetPromise([sections.iterations]);
   }
 }
 
@@ -575,13 +855,38 @@ function renderMethodIterations(items){
   if(!sections.iterations) return;
   sections.iterations.innerHTML = '';
   const rows = Array.isArray(items) ? items : [];
+  
+  if(rows.length === 0){
+    sections.iterations.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin iteraciones disponibles</td></tr>';
+    return;
+  }
+  
   rows.forEach(it=>{
     const tr=document.createElement('tr');
-    const fmt = (val)=> typeof val === 'number' ? formatNumber(val) : (val ?? '');
-    const alphaVal = (typeof it.step === 'number' && !Number.isNaN(it.step)) ? formatNumber(it.step) : (typeof it.alpha === 'number' ? formatNumber(it.alpha) : (it.alpha ?? ''));
-    tr.innerHTML = `<td>${it.k ?? ''}</td><td>${fmt(it.f_k)}</td><td>${fmt(it.grad_norm)}</td><td>${alphaVal}</td>`;
+    const fmt = (val)=> typeof val === 'number' ? formatNumber(val) : (val ?? '—');
+    
+    // Formatear x_k como string legible
+    let xkStr = '—';
+    if(Array.isArray(it.x_k)){
+      xkStr = `[${it.x_k.map(v => typeof v === 'number' ? v.toFixed(4) : v).join(', ')}]`;
+    } else if(it.x_k !== undefined){
+      xkStr = String(it.x_k);
+    }
+    
+    const alphaVal = (typeof it.step === 'number' && !Number.isNaN(it.step)) 
+      ? formatNumber(it.step) 
+      : (typeof it.alpha === 'number' ? formatNumber(it.alpha) : (it.alpha ?? '—'));
+    
+    tr.innerHTML = `
+      <td>${it.k ?? '—'}</td>
+      <td><code class="text-xs">${xkStr}</code></td>
+      <td>${fmt(it.f_k)}</td>
+      <td>${fmt(it.grad_norm)}</td>
+      <td>${alphaVal}</td>
+    `;
     sections.iterations.appendChild(tr);
   });
+  
   renderLineSearchDetails(rows);
 }
 

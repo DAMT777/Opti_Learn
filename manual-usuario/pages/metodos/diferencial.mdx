@@ -1,0 +1,118 @@
+# Cálculo Diferencial
+
+## ¿Cuándo se usa?
+
+El análisis diferencial se usa cuando:
+- No hay restricciones (o se ignoran temporalmente)
+- Se desea **calcular derivadas simbólicamente**
+- Se buscan **puntos críticos** analíticamente
+- Se necesita clasificar puntos estacionarios
+
+## Fundamento matemático
+
+El análisis diferencial estudia:
+
+### Gradiente
+El vector de primeras derivadas parciales:
+
+$$
+\nabla f(x) = \begin\{bmatrix\}
+\frac\{\partial f\}\{\partial x_1\} \\\\
+\vdots \\\\
+\frac\{\partial f\}\{\partial x_n\}
+\end\{bmatrix\}
+$$
+
+### Hessiana
+La matriz de segundas derivadas parciales:
+
+$$
+H(x) = \begin\{bmatrix\}
+\frac\{\partial^2 f\}\{\partial x_1^2\} & \cdots & \frac\{\partial^2 f\}\{\partial x_1 \partial x_n\} \\\\
+\vdots & \ddots & \vdots \\\\
+\frac\{\partial^2 f\}\{\partial x_n \partial x_1\} & \cdots & \frac\{\partial^2 f\}\{\partial x_n^2\}
+\end\{bmatrix\}
+$$
+
+## Puntos críticos
+
+Un punto $x^*$ es crítico si:
+
+$$
+\nabla f(x^*) = 0
+$$
+
+## Clasificación de puntos
+
+Usando la Hessiana en $x^*$:
+
+1. **Mínimo local**: $H(x^*)$ es definida positiva (todos los valores propios $> 0$)
+2. **Máximo local**: $H(x^*)$ es definida negativa (todos los valores propios $< 0$)
+3. **Punto silla**: $H(x^*)$ tiene valores propios positivos y negativos
+4. **No concluyente**: $H(x^*)$ es semidefinida
+
+## Ejemplo
+
+![Ejemplo de Cálculo Diferencial](/images/screenshots/ejemplo-diferencial.png)
+
+**Problema**: Analizar $f(x, y) = x^2 - y^2$
+
+**Entrada**:
+```
+Calcular derivadas de f(x,y) = x^2 - y^2
+```
+
+**Análisis**:
+
+**Gradiente**:
+$$
+\nabla f = \begin\{bmatrix\} 2x \\\\ -2y \end\{bmatrix\}
+$$
+
+**Punto crítico**: $\nabla f = 0 \Rightarrow x = 0, y = 0$
+
+**Hessiana**:
+$$
+H = \begin\{bmatrix\} 2 & 0 \\\\ 0 & -2 \end\{bmatrix\}
+$$
+
+**Clasificación**: Punto silla (valores propios: +2 y -2)
+
+## Uso práctico
+
+El análisis diferencial es útil para:
+
+1. **Verificación analítica**: Confirmar resultados numéricos
+2. **Estudio previo**: Entender la naturaleza de la función antes de optimizar
+3. **Problemas sin restricciones**: Caracterización completa del óptimo
+4. **Educación**: Aprender conceptos de optimización
+
+## Procedimiento sugerido
+
+1. Calcular el gradiente simbólicamente
+2. Igualar a cero y resolver para encontrar puntos críticos
+3. Calcular la Hessiana simbólicamente
+4. Evaluar la Hessiana en cada punto crítico
+5. Analizar valores propios para clasificar
+
+## Limitaciones
+
+- Solo aplica a funciones diferenciables
+- No maneja restricciones directamente
+- Puede ser difícil resolver $\nabla f = 0$ analíticamente
+- Requiere cálculo manual de valores propios
+
+## Complemento con métodos numéricos
+
+Después del análisis diferencial, puedes:
+- Usar Gradiente Descendente desde puntos críticos
+- Validar con métodos numéricos si el análisis es complejo
+- Aplicar KKT cuando agregues restricciones
+
+## Salida del sistema
+
+El sistema proporciona:
+- Expresiones simbólicas del gradiente
+- Matriz Hessiana simbólica
+- Sugerencias para análisis posterior
+- Guía de interpretación

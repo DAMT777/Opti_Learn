@@ -1,0 +1,91 @@
+# Primeros Pasos
+
+## Acceso al sistema
+
+1. Abre tu navegador web
+2. Accede a la URL del sistema (proporcionada por tu institución)
+3. La interfaz principal se cargará automáticamente
+
+## Interfaz principal
+
+![Interfaz principal de OptiLearn Web](/images/screenshots/interfaz-principal.png)
+
+La interfaz consta de:
+
+- **Panel de entrada**: Donde describes tu problema
+- **Botones de acción**: Para analizar, resolver y limpiar
+- **Panel de resultados**: Muestra la solución y explicaciones
+- **Área de visualización**: Gráficas y tablas
+
+## Tu primer problema
+
+Vamos a resolver un problema simple paso a paso.
+
+### Ejemplo: Minimización sin restricciones
+
+**Problema**: Minimizar la función f(x, y) = x² + y²
+
+**Pasos**:
+
+1. En el panel de entrada, escribe:
+   ```
+   Minimizar f(x,y) = x^2 + y^2
+   Punto inicial: x0 = [1, 1]
+   ```
+
+2. Haz clic en el botón **"Resolver"**
+
+3. El sistema:
+   - Detectará automáticamente el método (Gradiente Descendente)
+   - Ejecutará el solver
+   - Mostrará la solución paso a paso
+
+4. Revisa los resultados:
+   - Punto óptimo: x* = [0, 0]
+   - Valor mínimo: f* = 0
+   - Iteraciones realizadas
+   - Explicación pedagógica
+
+## Formato de entrada
+
+Puedes describir problemas de varias formas:
+
+### Formato natural
+```
+Minimizar f(x,y) = x^2 + 2*x*y + y^2
+sujeto a:
+  x + y <= 10
+  x >= 0, y >= 0
+Punto inicial: [1, 1]
+```
+
+### Formato estructurado
+```
+Función objetivo: x^2 + y^2
+Variables: x, y
+Restricciones:
+  - x + y = 5
+  - x >= 0
+  - y >= 0
+```
+
+### Formato JSON (avanzado)
+```json
+{
+  "objective_expr": "x**2 + y**2",
+  "variables": ["x", "y"],
+  "constraints": [
+    {"kind": "eq", "expr": "(x + y) - (5)"},
+    {"kind": "ge", "expr": "(x) - (0)"}
+  ],
+  "x0": [1, 1]
+}
+```
+
+## Consejos
+
+- Usa `^` o `**` para potencias: `x^2` o `x**2`
+- Usa `*` para productos: `2*x*y`
+- Usa funciones estándar: `sin(x)`, `cos(x)`, `exp(x)`, `log(x)`
+- Especifica el punto inicial cuando sea necesario
+- Las restricciones se detectan automáticamente

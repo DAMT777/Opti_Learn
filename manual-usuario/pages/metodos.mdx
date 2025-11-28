@@ -1,0 +1,23 @@
+# Métodos de Optimización
+
+OptiLearn Web soporta cinco métodos principales de optimización. El sistema selecciona automáticamente el método más adecuado según las características del problema.
+
+## Reglas de selección automática
+
+El sistema aplica las siguientes reglas en orden:
+
+1. **¿Menciona proceso iterativo?** → Gradiente Descendente
+2. **¿Hay restricciones no lineales?** → KKT
+3. **¿Solo restricciones de igualdad?** → Lagrange
+4. **¿Función cuadrática + restricciones lineales?** → Programación Cuadrática (QP)
+5. **¿Pide derivadas?** → Cálculo Diferencial
+
+## Métodos disponibles
+
+- [Gradiente Descendente](/metodos/gradiente)
+- [Multiplicadores de Lagrange](/metodos/lagrange)
+- [Condiciones KKT](/metodos/kkt)
+- [Programación Cuadrática (QP)](/metodos/qp)
+- [Cálculo Diferencial](/metodos/diferencial)
+
+Explora cada método en las subsecciones para aprender cuándo y cómo usarlos.

@@ -1,0 +1,49 @@
+# Introducción
+
+## ¿Qué problemas resuelve OptiLearn Web?
+
+OptiLearn Web está diseñado para resolver problemas de **Programación No Lineal (PNL)**, que son problemas de optimización donde:
+
+- La función objetivo es no lineal (cuadrática, exponencial, trigonométrica, etc.)
+- Puede haber restricciones lineales o no lineales
+- Se busca encontrar el valor óptimo (mínimo o máximo) de la función
+
+## Componentes del sistema
+
+### Frontend Web
+- Interfaz web desarrollada con HTML, CSS y JavaScript
+- Comunicación con el backend mediante API REST y WebSockets
+- Visualización de resultados y gráficas interactivas
+
+### Backend Python
+- Servidor Django con Daphne (ASGI)
+- Módulos de análisis y solución de problemas
+- Integración con servicios de IA (LLaMA vía Groq)
+
+### Lógica de Negocio
+- **message_parser**: Procesa el texto del problema
+- **method_detector**: Selecciona el método de optimización adecuado
+- **analyzer**: Normaliza y valida expresiones matemáticas
+- **Solvers**: Implementaciones de cada método de optimización
+
+### Servicio de IA
+- Extracción de datos estructurados desde lenguaje natural
+- Generación de explicaciones pedagógicas
+- Recomendaciones y validaciones
+
+## Flujo de trabajo
+
+1. El usuario ingresa un problema en lenguaje natural
+2. El sistema parsea y analiza el problema
+3. Se detecta automáticamente el método de optimización adecuado
+4. Se ejecuta el solver correspondiente
+5. La IA genera explicaciones didácticas
+6. Se presenta la solución con visualizaciones
+
+## Requisitos del usuario
+
+Para usar OptiLearn Web solo necesitas:
+
+- Un navegador web moderno (Chrome, Firefox, Edge, Safari)
+- Conexión a internet
+- Conocimientos básicos de optimización matemática (opcional pero recomendado)

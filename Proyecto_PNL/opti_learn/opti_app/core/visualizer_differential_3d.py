@@ -243,8 +243,7 @@ class DifferentialVisualizer3D:
             print(f"✅ Visualización 3D generada: {output_path}")
             
             # Retornar ruta relativa para usar en el servidor web
-            relative_path = os.path.join('static', 'tmp', filename)
-            return relative_path
+            return f"/static/tmp/{filename}"
             
         except Exception as e:
             print(f"❌ Error generando visualización 3D: {str(e)}")

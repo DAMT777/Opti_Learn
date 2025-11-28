@@ -1,0 +1,38 @@
+/* Sidebar */
+/* Sidebar con color distinto al chat */
+.sidebar{ width:280px; background: linear-gradient(180deg, #0e2846, #144a83); color: var(--d-ink); }
+.app-shell .sidebar{ flex: 0 0 280px; width: 280px; transition: flex-basis .3s ease, width .3s ease, opacity .2s ease, transform .3s ease; }
+body.theme-dark .sidebar{ box-shadow: none !important; }
+body.theme-light .sidebar{ background: linear-gradient(180deg, #eaf5ff, #d6ecff); color:#0b2a4a; box-shadow: inset -1px 0 0 rgba(0,0,0,0.06); }
+
+.brand{ font-weight:600; }
+.btn-icon{ background:#122346; border:1px solid #1e3561; color:#9bbcff; padding:4px 8px; border-radius:10px; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; }
+.item-link{ display:block; padding:8px 10px; border-radius:10px; color:inherit; text-decoration:none; }
+.item-link:hover{ background: rgba(255,255,255,.08); }
+/* Estética refinada del sidebar (sin cambiar contenido) */
+.sidebar{ padding-top: 12px; box-shadow: none; }
+.sidebar .brand{ font-size: 18px; letter-spacing: .2px; }
+.sidebar .text-dark-50{ color: rgba(255,255,255,.72) !important; }
+.sidebar .nav-vertical{ margin: 6px 0 10px; padding: 4px 0; }
+.sidebar .nav-vertical li{ margin-bottom: 6px; }
+.sidebar .item-link{ padding: 10px 12px; border-radius: 12px; color: rgba(255,255,255,.92); transition: background .2s ease, box-shadow .2s ease, transform .06s; }
+.sidebar .item-link:hover{ background: rgba(255,255,255,.08); box-shadow: inset 2px 0 0 rgba(33,133,228,.75); }
+.sidebar .item-link:active{ transform: translateY(1px); }
+.sidebar .form-check-input{ box-shadow: none; }
+.sidebar .form-check-label{ color: rgba(255,255,255,.9); }
+/* Modo claro equivalente */
+body.theme-light .sidebar .text-dark-50{ color: rgba(0,0,0,.6) !important; }
+body.theme-light .sidebar .item-link{ color: #0b2a4a; }
+body.theme-light .sidebar .item-link:hover{ background: rgba(0,0,0,.05); box-shadow: inset 2px 0 0 rgba(33,133,228,.85); }
+/* Forzar alto contraste de la etiqueta en modo claro */
+body.theme-light .sidebar .form-check-label{
+  color:#0b2a4a !important;
+  opacity: 1 !important;
+  font-weight: 600;
+}
+
+/* Colapso de sidebar + botón expand (animado) */
+.sidebar-hidden .sidebar{ flex-basis:0 !important; width:0 !important; opacity:0; transform:translateX(-24px); pointer-events:none; }
+.sidebar-hidden .chat-area{ height: calc(100vh - 180px); }
+.sidebar-hidden .chat-header{ position:relative; padding-left:16px !important; }
+.sidebar-hidden #expandBtn{ display:inline-flex !important; position:absolute; left:0; top:50%; transform:translate(-36px,-50%); width:28px; height:28px; background:rgba(18,35,70,.65); border:1px solid #2a4576; color:#9bc3ff; box-shadow:0 4px 12px rgba(0,0,0,.25); }

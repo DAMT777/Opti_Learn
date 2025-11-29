@@ -23,13 +23,43 @@ let lastPlotData = null;
 function renderMarkdownToHTML(text){
   try{
     if(window.marked){
-      const raw = window.marked.parse(String(text || ''), { breaks: true });
+      // Preservar bloques LaTeX antes de procesar Markdown
+      const latexBlocks = [];
+      let processedText = String(text || '');
+      
+      // Guardar bloques $$ ... $$ 
+      processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (match, content) => {
+        latexBlocks.push(match);
+        return `%%LATEX_BLOCK_${latexBlocks.length - 1}%%`;
+      });
+      
+      // Guardar bloques $ ... $ (inline)
+      processedText = processedText.replace(/\$([^\$\n]+?)\$/g, (match, content) => {
+        latexBlocks.push(match);
+        return `%%LATEX_INLINE_${latexBlocks.length - 1}%%`;
+      });
+      
+      // Procesar Markdown
+      let raw = window.marked.parse(processedText, { breaks: true });
+      
+      // Restaurar bloques LaTeX
+      raw = raw.replace(/%%LATEX_BLOCK_(\d+)%%/g, (match, idx) => latexBlocks[parseInt(idx)]);
+      raw = raw.replace(/%%LATEX_INLINE_(\d+)%%/g, (match, idx) => latexBlocks[parseInt(idx)]);
+      
       if(window.DOMPurify){
-        return window.DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+        return window.DOMPurify.sanitize(raw, { 
+          USE_PROFILES: { html: true },
+          ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
+                         'code', 'pre', 'blockquote', 'a', 'span', 'div', 'table', 'thead', 'tbody', 
+                         'tr', 'th', 'td', 'hr', 'img'],
+          ADD_ATTR: ['class', 'href', 'src', 'alt']
+        });
       }
       return raw;
     }
-  }catch{}
+  }catch(e){
+    console.error('Error rendering markdown:', e);
+  }
   return String(text || '').replace(/</g,'&lt;');
 }
 

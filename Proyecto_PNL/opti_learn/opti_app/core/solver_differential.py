@@ -465,10 +465,15 @@ class DifferentialSolver:
         lines.append("")
         lines.append("Resolvemos el sistema:")
         lines.append("")
-        lines.append("$$\\begin{cases}")
+        
+        # Construir sistema de ecuaciones con formato correcto
+        system_lines = []
         for var, grad_latex in zip(self.var_names, step2['gradient_latex']):
-            lines.append(f"{grad_latex} = 0 \\\\")
-        lines.append("\\end{cases}$$")
+            system_lines.append(f"{grad_latex} &= 0")
+        
+        lines.append("$$\\begin{aligned}")
+        lines.append(" \\\\ ".join(system_lines))
+        lines.append("\\end{aligned}$$")
         lines.append("")
         
         if step3['n_points'] > 0:
@@ -497,11 +502,11 @@ class DifferentialSolver:
         lines.append("💡 **Utilidad:** Los eigenvalores del Hessiano determinan la naturaleza del punto crítico.")
         lines.append("")
         
-        # PASO 5: Clasificación
-        if step5.get('classifications'):
-            lines.append("## PASO 5: CLASIFICACIÓN DE PUNTOS CRÍTICOS")
-            lines.append("")
-            
+        # PASO 5: Clasificación (siempre mostrar)
+        lines.append("## PASO 5: CLASIFICACIÓN DE PUNTOS CRÍTICOS")
+        lines.append("")
+        
+        if step5.get('classifications') and len(step5['classifications']) > 0:
             for classification in step5['classifications']:
                 i = classification['point_index'] + 1
                 lines.append(f"### Análisis del Punto {i}:")
@@ -525,11 +530,20 @@ class DifferentialSolver:
                 
                 lines.append("---")
                 lines.append("")
-        
-        # PASO 6: Evaluación
-        if step6['optimal_point']:
-            lines.append("## PASO 6: EVALUACIÓN DE LA FUNCIÓN")
+        else:
+            lines.append("⚠️ **No se encontraron puntos críticos para clasificar.**")
             lines.append("")
+            lines.append("Esto puede ocurrir cuando:")
+            lines.append("- El sistema ∇f = 0 no tiene solución real")
+            lines.append("- La función no tiene extremos locales en el dominio")
+            lines.append("- Se requieren métodos numéricos para encontrar soluciones aproximadas")
+            lines.append("")
+        
+        # PASO 6: Evaluación (siempre mostrar)
+        lines.append("## PASO 6: EVALUACIÓN DE LA FUNCIÓN")
+        lines.append("")
+        
+        if step6.get('optimal_point'):
             lines.append("**Punto óptimo encontrado:**")
             lines.append("")
             
@@ -547,6 +561,11 @@ class DifferentialSolver:
                     lines.append(f"✅ **Este es un {self.point_nature}**")
                 else:
                     lines.append(f"⚠️ **Este es un {self.point_nature}**")
+            lines.append("")
+        else:
+            lines.append("⚠️ **No se pudo evaluar la función en un punto óptimo.**")
+            lines.append("")
+            lines.append("Sin puntos críticos válidos, no es posible determinar el valor óptimo analíticamente.")
             lines.append("")
         
         # Interpretación

@@ -23,13 +23,43 @@ let lastPlotData = null;
 function renderMarkdownToHTML(text){
   try{
     if(window.marked){
-      const raw = window.marked.parse(String(text || ''), { breaks: true });
+      // Preservar bloques LaTeX antes de procesar Markdown
+      const latexBlocks = [];
+      let processedText = String(text || '');
+      
+      // Guardar bloques $$ ... $$ 
+      processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (match, content) => {
+        latexBlocks.push(match);
+        return `%%LATEX_BLOCK_${latexBlocks.length - 1}%%`;
+      });
+      
+      // Guardar bloques $ ... $ (inline)
+      processedText = processedText.replace(/\$([^\$\n]+?)\$/g, (match, content) => {
+        latexBlocks.push(match);
+        return `%%LATEX_INLINE_${latexBlocks.length - 1}%%`;
+      });
+      
+      // Procesar Markdown
+      let raw = window.marked.parse(processedText, { breaks: true });
+      
+      // Restaurar bloques LaTeX
+      raw = raw.replace(/%%LATEX_BLOCK_(\d+)%%/g, (match, idx) => latexBlocks[parseInt(idx)]);
+      raw = raw.replace(/%%LATEX_INLINE_(\d+)%%/g, (match, idx) => latexBlocks[parseInt(idx)]);
+      
       if(window.DOMPurify){
-        return window.DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+        return window.DOMPurify.sanitize(raw, { 
+          USE_PROFILES: { html: true },
+          ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
+                         'code', 'pre', 'blockquote', 'a', 'span', 'div', 'table', 'thead', 'tbody', 
+                         'tr', 'th', 'td', 'hr', 'img'],
+          ADD_ATTR: ['class', 'href', 'src', 'alt']
+        });
       }
       return raw;
     }
-  }catch{}
+  }catch(e){
+    console.error('Error rendering markdown:', e);
+  }
   return String(text || '').replace(/</g,'&lt;');
 }
 
@@ -42,7 +72,16 @@ function buildResultCardsHtml(method, meta){
       if(abs >= 1e4 || (abs > 0 && abs < 1e-3)) return v.toExponential(4);
       return v.toFixed(6);
     }
-    if(Array.isArray(v)) return `[${v.map(x => typeof x === 'number' ? x.toFixed(4) : x).join(', ')}]`;
+    if(Array.isArray(v)) {
+      if(v.length === 0) return '—';
+      return `[${v.map(x => typeof x === 'number' ? x.toFixed(4) : x).join(', ')}]`;
+    }
+    // Manejar objetos planos (diccionarios de Python)
+    if(typeof v === 'object' && v !== null) {
+      const vals = Object.values(v);
+      if(vals.length === 0) return '—';
+      return `[${vals.map(x => typeof x === 'number' ? x.toFixed(4) : x).join(', ')}]`;
+    }
     return String(v);
   };
 
@@ -600,9 +639,12 @@ async function solve(){
     } else if(method === 'kkt'){
       // Renderizar casos evaluados de KKT
       renderKKTCandidates(meta.candidates, meta.x_star, meta.f_star, meta.is_maximization);
-    } else if(method === 'differential' && meta.critical_points && sections.iterations){
-      // Renderizar tabla de puntos críticos para differential
-      renderCriticalPointsTable(meta.critical_points);
+    } else if(method === 'qp'){
+      // Renderizar sección específica de QP
+      renderQPDecomposition(meta);
+    } else if(method === 'differential'){
+      // Renderizar sección específica de Differential
+      renderDifferentialAnalysis(meta);
     } else {
       // Renderizar iteraciones si existen (para gradient) - buscar en metadata
       const iterations = meta.iterations || result.iterations || [];
@@ -635,12 +677,30 @@ function renderProcedureSteps(steps){
   
   let html = '<div class="procedure-steps">';
   steps.forEach((step, idx) => {
+    let title = '';
+    let description = '';
+    
+    if(typeof step === 'string'){
+      // Step es un string simple
+      description = step;
+    } else if(step.titulo && step.contenido !== undefined){
+      // Formato del solver QP: {numero, titulo, contenido}
+      title = step.titulo;
+      description = formatQPStepContent(step.numero, step.contenido);
+    } else {
+      // Formato estándar: {title, description}
+      title = step.title || '';
+      description = step.description || '';
+    }
+    
+    const stepNum = step.numero || (idx + 1);
+    
     html += `
       <div class="procedure-step">
-        <div class="procedure-step__number">${idx + 1}</div>
+        <div class="procedure-step__number">${stepNum}</div>
         <div class="procedure-step__content">
-          <div class="procedure-step__title">${step.title || ''}</div>
-          <div class="procedure-step__description">${renderMarkdownToHTML(step.description || step)}</div>
+          ${title ? `<div class="procedure-step__title">${title}</div>` : ''}
+          <div class="procedure-step__description">${renderMarkdownToHTML(description)}</div>
         </div>
       </div>
     `;
@@ -649,7 +709,335 @@ function renderProcedureSteps(steps){
   return html;
 }
 
-// Función para renderizar tabla de puntos críticos (differential)
+// Función auxiliar para formatear contenido de pasos QP
+function formatQPStepContent(stepNum, contenido){
+  if(!contenido || typeof contenido !== 'object') return String(contenido || '');
+  
+  let html = '';
+  
+  switch(stepNum){
+    case 1: // DEFINICION DEL PROBLEMA
+      if(contenido.objetivo) html += `<p><strong>Función objetivo:</strong> $${contenido.objetivo}$</p>`;
+      if(contenido.variables) html += `<p><strong>Variables:</strong> ${contenido.variables}</p>`;
+      if(contenido.n_ineq !== undefined || contenido.n_eq !== undefined){
+        html += `<p><strong>Restricciones:</strong> ${contenido.n_eq || 0} igualdad, ${contenido.n_ineq || 0} desigualdad</p>`;
+      }
+      if(contenido.restricciones_detalles && contenido.restricciones_detalles.length > 0){
+        html += '<ul class="constraint-list">';
+        contenido.restricciones_detalles.forEach(r => {
+          const kindSymbol = r.kind === 'eq' ? '=' : (r.kind === 'ge' ? '≥' : '≤');
+          html += `<li>$${r.expr} ${kindSymbol} ${r.rhs}$</li>`;
+        });
+        html += '</ul>';
+      }
+      break;
+      
+    case 2: // MATRICES
+      if(contenido.D){
+        html += '<p><strong>Matriz Hessiana $Q$:</strong></p>';
+        html += formatMatrixLatex(contenido.D, 'Q');
+      }
+      if(contenido.C){
+        html += '<p><strong>Vector de coeficientes lineales $c$:</strong></p>';
+        html += formatVectorLatex(contenido.C, 'c');
+      }
+      if(contenido.A_ineq && contenido.A_ineq.length > 0){
+        html += '<p><strong>Matriz de restricciones $A$:</strong></p>';
+        html += formatMatrixLatex(contenido.A_ineq, 'A');
+      }
+      if(contenido.b_ineq && contenido.b_ineq.length > 0){
+        html += '<p><strong>Vector $b$:</strong> $[' + contenido.b_ineq.map(v => formatNum(v)).join(', ') + ']$</p>';
+      }
+      break;
+      
+    case 3: // CONVEXIDAD
+      if(contenido.eigenvalues){
+        html += '<p><strong>Eigenvalores de $Q$:</strong> $\\lambda = [' + contenido.eigenvalues.map(v => formatNum(v)).join(', ') + ']$</p>';
+      }
+      if(contenido.definiteness){
+        html += `<p><strong>Definitud:</strong> ${contenido.definiteness}</p>`;
+      }
+      if(contenido.convexa !== undefined){
+        const badge = contenido.convexa 
+          ? '<span class="badge bg-success">✓ Problema convexo</span>'
+          : '<span class="badge bg-warning text-dark">⚠ No convexo</span>';
+        html += `<p>${badge}</p>`;
+      }
+      break;
+      
+    case 4: // SISTEMA KKT
+      html += '<p><strong>Dimensiones del sistema KKT:</strong></p>';
+      html += '<ul>';
+      if(contenido.n_vars !== undefined) html += `<li>Variables primales: ${contenido.n_vars}</li>`;
+      if(contenido.n_lambda_eq !== undefined) html += `<li>Multiplicadores de igualdad ($\\lambda$): ${contenido.n_lambda_eq}</li>`;
+      if(contenido.n_lambda_ineq !== undefined) html += `<li>Multiplicadores de desigualdad ($\\mu$): ${contenido.n_lambda_ineq}</li>`;
+      if(contenido.n_mu !== undefined) html += `<li>Variables de holgura: ${contenido.n_mu}</li>`;
+      html += '</ul>';
+      break;
+      
+    case 5: // PROCESO DE OPTIMIZACION
+      if(contenido.metodo) html += `<p><strong>Método:</strong> ${contenido.metodo}</p>`;
+      if(contenido.convergio !== undefined){
+        const badge = contenido.convergio 
+          ? '<span class="badge bg-success">✓ Convergió</span>'
+          : '<span class="badge bg-danger">✗ No convergió</span>';
+        html += `<p><strong>Estado:</strong> ${badge}</p>`;
+      }
+      if(contenido.total_iteraciones !== undefined) html += `<p><strong>Iteraciones:</strong> ${contenido.total_iteraciones}</p>`;
+      if(contenido.x_optimo){
+        html += '<p><strong>Punto óptimo:</strong> $x^* = [' + contenido.x_optimo.map(v => formatNum(v)).join(', ') + ']$</p>';
+      }
+      if(contenido.f_optimo !== undefined) html += `<p><strong>Valor óptimo:</strong> $f(x^*) = ${formatNum(contenido.f_optimo)}$</p>`;
+      if(contenido.mensaje) html += `<p class="text-muted"><em>${contenido.mensaje}</em></p>`;
+      break;
+      
+    case 6: // VERIFICACION KKT
+      html += '<p><strong>Verificación de condiciones KKT:</strong></p>';
+      html += '<ul>';
+      if(contenido.gradiente_f){
+        html += `<li><strong>$\\nabla_x L = 0$:</strong> Gradiente ≈ $[${contenido.gradiente_f.map(v => formatNum(v, 2)).join(', ')}]$ ✓</li>`;
+      }
+      if(contenido.residual_igualdad !== undefined) html += `<li><strong>Restricciones igualdad:</strong> Residual = ${formatNum(contenido.residual_igualdad)} ✓</li>`;
+      if(contenido.violacion_desigualdad !== undefined) html += `<li><strong>Restricciones desigualdad:</strong> Violación máx = ${formatNum(contenido.violacion_desigualdad)} ✓</li>`;
+      if(contenido.x_no_negativo !== undefined){
+        const check = contenido.x_no_negativo ? '✓' : '✗';
+        html += `<li><strong>No negatividad:</strong> $x \\geq 0$ ${check}</li>`;
+      }
+      html += '</ul>';
+      break;
+      
+    case 7: // SOLUCION OPTIMA
+      if(contenido.solucion){
+        html += '<p><strong>Solución óptima:</strong></p>';
+        html += '<div class="solution-box">';
+        const vars = Object.entries(contenido.solucion);
+        vars.forEach(([varName, val]) => {
+          html += `<p>$${varName}^* = ${formatNum(val)}$</p>`;
+        });
+        html += '</div>';
+      }
+      if(contenido.valor_objetivo !== undefined){
+        html += `<p><strong>Valor óptimo:</strong> $f(x^*) = ${formatNum(contenido.valor_objetivo)}$</p>`;
+      }
+      if(contenido.multiplicadores){
+        html += '<p><strong>Multiplicadores de Lagrange:</strong></p>';
+        if(contenido.multiplicadores.lambda_ineq){
+          html += '<p>$\\mu$ (desigualdad): $[' + contenido.multiplicadores.lambda_ineq.map(v => formatNum(v)).join(', ') + ']$</p>';
+        }
+        if(contenido.multiplicadores.mu){
+          html += '<p>$\\lambda$ (igualdad): $[' + contenido.multiplicadores.mu.map(v => formatNum(v)).join(', ') + ']$</p>';
+        }
+      }
+      break;
+      
+    default:
+      // Formateo genérico para otros pasos
+      html = formatGenericContent(contenido);
+  }
+  
+  return html || formatGenericContent(contenido);
+}
+
+// Formatear matriz en LaTeX
+function formatMatrixLatex(matrix, name){
+  if(!matrix || !Array.isArray(matrix)) return '';
+  let latex = `$$${name} = \\begin{bmatrix}`;
+  matrix.forEach((row, i) => {
+    if(Array.isArray(row)){
+      latex += row.map(v => formatNum(v)).join(' & ');
+    } else {
+      latex += formatNum(row);
+    }
+    if(i < matrix.length - 1) latex += ' \\\\ ';
+  });
+  latex += '\\end{bmatrix}$$';
+  return latex;
+}
+
+// Formatear vector en LaTeX
+function formatVectorLatex(vector, name){
+  if(!vector || !Array.isArray(vector)) return '';
+  return `$$${name} = \\begin{bmatrix} ${vector.map(v => formatNum(v)).join(' \\\\ ')} \\end{bmatrix}$$`;
+}
+
+// Formatear número
+function formatNum(val, decimals = 4){
+  if(val === null || val === undefined) return '—';
+  if(typeof val !== 'number') return String(val);
+  if(Math.abs(val) < 1e-10) return '0';
+  if(Math.abs(val) >= 1e4 || (Math.abs(val) > 0 && Math.abs(val) < 1e-3)){
+    return val.toExponential(2);
+  }
+  return val.toFixed(decimals).replace(/\.?0+$/, '');
+}
+
+// Formatear contenido genérico
+function formatGenericContent(contenido){
+  if(!contenido || typeof contenido !== 'object') return String(contenido || '');
+  
+  let html = '<ul>';
+  for(const [key, value] of Object.entries(contenido)){
+    if(value === null || value === undefined) continue;
+    const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    if(Array.isArray(value)){
+      html += `<li><strong>${displayKey}:</strong> [${value.map(v => typeof v === 'number' ? formatNum(v) : v).join(', ')}]</li>`;
+    } else if(typeof value === 'object'){
+      html += `<li><strong>${displayKey}:</strong> ${JSON.stringify(value)}</li>`;
+    } else {
+      html += `<li><strong>${displayKey}:</strong> ${value}</li>`;
+    }
+  }
+  html += '</ul>';
+  return html;
+}
+
+// Función para renderizar la sección de análisis de Cálculo Diferencial
+function renderDifferentialAnalysis(meta){
+  // Renderizar Gradiente
+  const gradientEl = document.getElementById('gradientContent');
+  if(gradientEl){
+    let html = '';
+    if(meta.gradient){
+      if(Array.isArray(meta.gradient)){
+        // Gradiente como array de strings LaTeX
+        html = '<div class="gradient-display">';
+        html += '$$\\nabla f = \\begin{bmatrix}';
+        html += meta.gradient.map(g => typeof g === 'string' ? g : formatNum(g)).join(' \\\\ ');
+        html += '\\end{bmatrix}$$';
+        html += '</div>';
+      } else if(typeof meta.gradient === 'string'){
+        // Gradiente ya formateado en LaTeX
+        html = `<div class="gradient-display">$$\\nabla f = ${meta.gradient}$$</div>`;
+      }
+    } else {
+      html = '<span class="text-muted">Gradiente no disponible</span>';
+    }
+    gradientEl.innerHTML = html;
+  }
+  
+  // Renderizar Hessiano
+  const hessianEl = document.getElementById('hessianContent');
+  if(hessianEl){
+    let html = '';
+    if(meta.hessian){
+      if(Array.isArray(meta.hessian)){
+        // Hessiano como matriz
+        html = '<div class="hessian-display">';
+        html += '$$H_f = \\begin{bmatrix}';
+        meta.hessian.forEach((row, i) => {
+          if(Array.isArray(row)){
+            html += row.map(v => typeof v === 'string' ? v : formatNum(v)).join(' & ');
+          } else {
+            html += typeof row === 'string' ? row : formatNum(row);
+          }
+          if(i < meta.hessian.length - 1) html += ' \\\\ ';
+        });
+        html += '\\end{bmatrix}$$';
+        html += '</div>';
+      } else if(typeof meta.hessian === 'string'){
+        // Hessiano ya formateado en LaTeX
+        html = `<div class="hessian-display">$$H_f = ${meta.hessian}$$</div>`;
+      }
+      
+      // Agregar determinante si está disponible
+      if(meta.hessian_det !== undefined && meta.hessian_det !== null){
+        html += `<p class="mt-2"><strong>Determinante:</strong> $\\det(H_f) = ${formatNum(meta.hessian_det)}$</p>`;
+      }
+      
+      // Agregar eigenvalores si están disponibles
+      if(meta.eigenvalues && Array.isArray(meta.eigenvalues) && meta.eigenvalues.length > 0){
+        html += `<p><strong>Eigenvalores:</strong> $\\lambda = [${meta.eigenvalues.map(v => formatNum(v)).join(', ')}]$</p>`;
+      }
+    } else {
+      html = '<span class="text-muted">Hessiano no disponible</span>';
+    }
+    hessianEl.innerHTML = html;
+  }
+  
+  // Renderizar tabla de puntos críticos
+  const itersEl = document.getElementById('iters');
+  if(itersEl){
+    let html = '';
+    
+    // Usar classifications si está disponible, sino usar critical_points
+    const points = meta.classifications || meta.critical_points || [];
+    
+    if(Array.isArray(points) && points.length > 0){
+      points.forEach((cp, idx) => {
+        // Determinar el punto y naturaleza según la estructura de datos
+        const point = cp.point || cp.critical_point || cp;
+        const nature = cp.nature || cp.classification || cp.type || '—';
+        const value = cp.value !== undefined ? cp.value : (cp.f_value !== undefined ? cp.f_value : '—');
+        const det = cp.determinant !== undefined ? cp.determinant : (cp.hessian_det !== undefined ? cp.hessian_det : '—');
+        
+        // Badge según naturaleza
+        const natureLower = String(nature).toLowerCase();
+        let badgeClass = 'bg-secondary';
+        if(natureLower.includes('mínimo') || natureLower.includes('minimo') || natureLower.includes('minimum')){
+          badgeClass = 'bg-success';
+        } else if(natureLower.includes('máximo') || natureLower.includes('maximo') || natureLower.includes('maximum')){
+          badgeClass = 'bg-danger';
+        } else if(natureLower.includes('silla') || natureLower.includes('saddle')){
+          badgeClass = 'bg-warning text-dark';
+        }
+        
+        html += `
+          <tr>
+            <td><strong>P${idx + 1}</strong></td>
+            <td><code>${formatPoint(point)}</code></td>
+            <td>${typeof value === 'number' ? formatNum(value) : value}</td>
+            <td>${typeof det === 'number' ? formatNum(det) : det}</td>
+            <td><span class="badge ${badgeClass}">${nature}</span></td>
+          </tr>
+        `;
+      });
+    } else {
+      // Mostrar al menos el punto óptimo si existe
+      if(meta.optimal_point){
+        const nature = meta.nature || '—';
+        const natureLower = String(nature).toLowerCase();
+        let badgeClass = 'bg-secondary';
+        if(natureLower.includes('mínimo') || natureLower.includes('minimo')){
+          badgeClass = 'bg-success';
+        } else if(natureLower.includes('máximo') || natureLower.includes('maximo')){
+          badgeClass = 'bg-danger';
+        } else if(natureLower.includes('silla')){
+          badgeClass = 'bg-warning text-dark';
+        }
+        
+        html = `
+          <tr>
+            <td><strong>P1</strong></td>
+            <td><code>${formatPoint(meta.optimal_point)}</code></td>
+            <td>${meta.optimal_value !== undefined ? formatNum(meta.optimal_value) : '—'}</td>
+            <td>${meta.hessian_det !== undefined ? formatNum(meta.hessian_det) : '—'}</td>
+            <td><span class="badge ${badgeClass}">${nature}</span></td>
+          </tr>
+        `;
+      } else {
+        html = `
+          <tr>
+            <td colspan="5" class="text-center text-muted">
+              <i class="bi bi-info-circle"></i> No se encontraron puntos críticos.
+            </td>
+          </tr>
+        `;
+      }
+    }
+    
+    itersEl.innerHTML = html;
+  }
+  
+  // Re-renderizar MathJax
+  if(window.MathJax && window.MathJax.typesetPromise){
+    const elements = [gradientEl, hessianEl, itersEl].filter(e => e);
+    if(elements.length > 0){
+      window.MathJax.typesetPromise(elements).catch(err => console.error('MathJax error:', err));
+    }
+  }
+}
+
+// Función para renderizar tabla de puntos críticos (differential) - Legacy
 function renderCriticalPointsTable(criticalPoints){
   if(!sections.iterations || !Array.isArray(criticalPoints)) return;
   
@@ -690,6 +1078,126 @@ function renderCriticalPointsTable(criticalPoints){
   // Re-renderizar MathJax
   if(window.MathJax && window.MathJax.typesetPromise){
     window.MathJax.typesetPromise([sections.iterations]);
+  }
+}
+
+// Función para renderizar la sección específica de QP (Matriz Q, Vector c, etc.)
+function renderQPDecomposition(meta){
+  // Renderizar Matriz Q
+  const matrixQEl = document.getElementById('matrixQ');
+  if(matrixQEl && meta.Q){
+    const Q = meta.Q;
+    let html = '<div class="matrix-display">';
+    if(Array.isArray(Q) && Q.length > 0){
+      html += '$$Q = \\begin{bmatrix}';
+      Q.forEach((row, i) => {
+        if(Array.isArray(row)){
+          html += row.map(v => typeof v === 'number' ? v.toFixed(4) : v).join(' & ');
+        } else {
+          html += typeof row === 'number' ? row.toFixed(4) : row;
+        }
+        if(i < Q.length - 1) html += ' \\\\ ';
+      });
+      html += '\\end{bmatrix}$$';
+    } else {
+      html += '<span class="text-muted">No disponible</span>';
+    }
+    html += '</div>';
+    matrixQEl.innerHTML = html;
+  }
+  
+  // Renderizar Vector c
+  const vectorCEl = document.getElementById('vectorC');
+  if(vectorCEl && meta.c){
+    const c = meta.c;
+    let html = '<div class="vector-display">';
+    if(Array.isArray(c) && c.length > 0){
+      html += '$$c = \\begin{bmatrix}';
+      html += c.map(v => typeof v === 'number' ? v.toFixed(4) : v).join(' \\\\ ');
+      html += '\\end{bmatrix}$$';
+    } else {
+      html += '<span class="text-muted">No disponible</span>';
+    }
+    html += '</div>';
+    vectorCEl.innerHTML = html;
+  }
+  
+  // Renderizar análisis de convexidad
+  const convexityEl = document.getElementById('convexityAnalysis');
+  if(convexityEl && meta.convexity){
+    const conv = meta.convexity;
+    let html = '<div class="convexity-info">';
+    
+    // Eigenvalues
+    if(conv.eigenvalues && conv.eigenvalues.length > 0){
+      html += '<p><strong>Eigenvalores de Q:</strong> ';
+      html += conv.eigenvalues.map(v => typeof v === 'number' ? v.toFixed(4) : v).join(', ');
+      html += '</p>';
+    }
+    
+    // Definiteness
+    if(conv.definiteness){
+      html += `<p><strong>Definitud:</strong> ${conv.definiteness}</p>`;
+    }
+    
+    // Is convex
+    const convexBadge = conv.is_convex 
+      ? '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Problema convexo</span>'
+      : '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> No convexo</span>';
+    html += `<p>${convexBadge}</p>`;
+    
+    html += '</div>';
+    convexityEl.innerHTML = html;
+  }
+  
+  // Renderizar tabla de solución KKT
+  const itersEl = document.getElementById('iters');
+  if(itersEl){
+    let html = '';
+    
+    // Agregar variables primales (x)
+    if(meta.x_star && Array.isArray(meta.x_star)){
+      meta.x_star.forEach((val, i) => {
+        html += `
+          <tr>
+            <td><code>x${i+1}</code></td>
+            <td><strong>${typeof val === 'number' ? val.toFixed(6) : val}</strong></td>
+            <td><span class="badge bg-primary">Primal</span></td>
+          </tr>
+        `;
+      });
+    }
+    
+    // Agregar valor óptimo
+    if(meta.f_star !== null && meta.f_star !== undefined){
+      html += `
+        <tr class="table-success">
+          <td><code>f(x*)</code></td>
+          <td><strong>${typeof meta.f_star === 'number' ? meta.f_star.toFixed(6) : meta.f_star}</strong></td>
+          <td><span class="badge bg-success">Valor óptimo</span></td>
+        </tr>
+      `;
+    }
+    
+    if(html){
+      itersEl.innerHTML = html;
+    } else {
+      itersEl.innerHTML = `
+        <tr>
+          <td colspan="3" class="text-center text-muted">
+            <i class="bi bi-info-circle"></i> No se encontró solución numérica.
+          </td>
+        </tr>
+      `;
+    }
+  }
+  
+  // Re-renderizar MathJax
+  if(window.MathJax && window.MathJax.typesetPromise){
+    const elements = [matrixQEl, vectorCEl, convexityEl, itersEl].filter(e => e);
+    if(elements.length > 0){
+      window.MathJax.typesetPromise(elements).catch(err => console.error('MathJax error:', err));
+    }
   }
 }
 

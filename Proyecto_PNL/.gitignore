@@ -1,5 +1,7 @@
 # No expongas secretos
 opti_learn/.env
+.env
+
 # Python cache
 __pycache__/
 *.py[cod]
@@ -20,9 +22,13 @@ Thumbs.db
 
 # Archivos temporales de visualización
 opti_learn/opti_app/static/tmp/*.png
+opti_learn/staticfiles/tmp/*.png
 static/tmp/*.png
+*.png
+
+# Base de datos
+*.sqlite3
 
 # Otros
 *.log
-*.sqlite3
 

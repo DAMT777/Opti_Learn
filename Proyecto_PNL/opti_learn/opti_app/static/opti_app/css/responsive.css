@@ -1,6 +1,0 @@
-/* Responsive enhancements */
-.chat-footer{ padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0px); }
-@media (max-width: 1200px){ :root{ --chat-input-width: 760px; } }
-@media (max-width: 992px){ :root{ --chat-input-width: 620px; } }
-@media (max-width: 768px){ :root{ --chat-input-width: 100%; --chat-input-max: 96vw; --chat-input-height: 52px; } html, body{ height:auto; overflow:auto; } .chat-panel{ min-width: 0 !important; height: auto; min-height: calc(100vh - 120px); } #chat{ max-width: 100%; padding: 8px 12px 84px; } .msg .bubble{ max-width: 100%; } .chat-footer .chat-input{ border-radius: 16px; } }
-@media (max-width: 576px){ :root{ --chat-input-height: 48px; } main{ padding-left: 10px !important; padding-right: 10px !important; } .send-inline{ width:32px; height:32px; } .chat-header .menu-btn{ width: 32px; height: 32px; } }

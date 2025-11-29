@@ -5,6 +5,5 @@ __all__ = [
     'solver_kkt',
     'solver_cuadratico',
     'recommender_ai',
-    'ai_prompts',
 ]
 

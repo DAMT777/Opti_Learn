@@ -8,11 +8,14 @@
     "start": "next start"
   },
   "dependencies": {
+    "katex": "^0.16.25",
     "next": "^14.0.0",
     "nextra": "^2.13.0",
     "nextra-theme-docs": "^2.13.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

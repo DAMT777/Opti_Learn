@@ -3,7 +3,7 @@
 ## ¿Cuándo se usa?
 
 La Programación Cuadrática se usa cuando:
-- La función objetivo es **cuadrática**: $f(x) = \frac\{1\}\{2\} x^T H x + c^T x$
+- La función objetivo es **cuadrática**: $f(x) = \frac{1}{2} x^T H x + c^T x$
 - Las restricciones son **lineales**
 - Hay una **mezcla de restricciones**: al menos una igualdad Y al menos una desigualdad
 
@@ -12,9 +12,11 @@ La Programación Cuadrática se usa cuando:
 Un problema QP tiene la forma:
 
 $$
-\min \quad \frac\{1\}\{2\} x^T H x + c^T x \\\\
-\text\{s.a.\} \quad Ax = b \\\\
-Gx \leq h
+\begin{aligned}
+&\min \quad \frac{1}{2} x^T H x + c^T x \\
+&\text{s.a.} \quad Ax = b \\
+&\phantom{\text{s.a.}} \quad Gx \leq h
+\end{aligned}
 $$
 
 Donde:
@@ -62,10 +64,10 @@ sujeto a:
 ```
 
 **Matrices del problema**:
-- $H = \begin\{bmatrix\} 2 & 0 \\\\ 0 & 2 \end\{bmatrix\}$
-- $c = \begin\{bmatrix\} 0 \\\\ 0 \end\{bmatrix\}$
+- $H = \begin{bmatrix} 2 & 0 \\ 0 & 2 \end{bmatrix}$
+- $c = \begin{bmatrix} 0 \\ 0 \end{bmatrix}$
 - $A = [1 \quad 1]$, $b = [1]$
-- $G = \begin\{bmatrix\} -1 & 0 \\\\ 0 & -1 \end\{bmatrix\}$, $h = \begin\{bmatrix\} 0 \\\\ 0 \end\{bmatrix\}$
+- $G = \begin{bmatrix} -1 & 0 \\ 0 & -1 \end{bmatrix}$, $h = \begin{bmatrix} 0 \\ 0 \end{bmatrix}$
 
 **Resultado**:
 - Punto óptimo: $x^* = [0.5, 0.5]$

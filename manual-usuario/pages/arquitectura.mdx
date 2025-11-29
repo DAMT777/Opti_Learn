@@ -1,40 +1,12 @@
 # Arquitectura del Sistema
 
 ## Visión general
-
+OptiLearn Web utiliza una arquitectura cliente-servidor con los siguientes componentes:
 ![Diagrama de Arquitectura](/images/diagramas/arquitectura.png)
 
-OptiLearn Web utiliza una arquitectura cliente-servidor con los siguientes componentes:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Frontend Web                          │
-│  (HTML + CSS + JavaScript - fetch para comunicación)        │
-└────────────────────────┬────────────────────────────────────┘
-                         │ API REST / WebSocket
-┌────────────────────────▼────────────────────────────────────┐
-│                    Controladores REST                        │
-│              (Django Views / WebSocket Consumers)            │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│                   Lógica de Negocio (Python)                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │message_parser│→ │method_detector│→ │   analyzer   │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│                           ↓                                  │
-│  ┌─────────────────────────────────────────────────┐        │
-│  │              Solvers (Métodos)                   │        │
-│  │  • solver_gradiente  • solver_lagrange          │        │
-│  │  • solver_kkt        • solver_qp_completo       │        │
-│  └─────────────────────────────────────────────────┘        │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│                     Servicio de IA                           │
-│                    (LLaMA vía Groq API)                      │
-└─────────────────────────────────────────────────────────────┘
-```
+## Casos de uso
+El siguiente diagrama muestra las interacciones principales entre los usuarios y el sistema:
+![Diagrama de Casos de Uso](/images/diagramas/casos%20de%20uso.drawio.png)
 
 ## Módulos principales
 
@@ -67,9 +39,9 @@ Cada solver implementa un método específico:
   - Generación de explicaciones pedagógicas
   - Validación y recomendaciones
 
-## Flujo de datos
+## Diagrama de secuencia
 
-![Diagrama de Flujo de Datos](/images/diagramas/flujo-datos.png)
+![Diagrama de secuencia del Sistema](/images/diagramas/flujo-datos.png)
 
 1. **Usuario** envía problema → **Frontend**
 2. **Frontend** envía petición → **Controladores REST**

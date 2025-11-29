@@ -12,7 +12,7 @@ El método del gradiente descendente se usa cuando:
 El gradiente descendente actualiza la solución iterativamente:
 
 $$
-x_\{k+1\} = x_k - \alpha_k \nabla f(x_k)
+x_{k+1} = x_k - \alpha_k \nabla f(x_k)
 $$
 
 Donde:
@@ -35,9 +35,9 @@ Usar gradiente descendente con 100 iteraciones
 
 **Proceso**:
 1. El sistema calcula el gradiente: $\nabla f = [2x, 2y]$
-2. En cada iteración, actualiza: $x_\{k+1\} = x_k - \alpha_k [2x_k, 2y_k]$
+2. En cada iteración, actualiza: $x_{k+1} = x_k - \alpha_k [2x_k, 2y_k]$
 3. El tamaño de paso $\alpha_k$ se determina mediante búsqueda de línea (Armijo)
-4. Converge cuando $\|\nabla f(x_k)\| < \text\{tolerancia\}$
+4. Converge cuando $\|\nabla f(x_k)\| < \text{tolerancia}$
 
 **Resultado**:
 - Punto óptimo: $x^* = [0, 0]$

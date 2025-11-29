@@ -12,7 +12,7 @@ El método de Multiplicadores de Lagrange se usa cuando:
 El método construye la función Lagrangiana:
 
 $$
-L(x, \lambda) = f(x) + \sum_\{i=1\}^m \lambda_i g_i(x)
+L(x, \lambda) = f(x) + \sum_{i=1}^m \lambda_i g_i(x)
 $$
 
 Donde:
@@ -25,8 +25,10 @@ Donde:
 Para encontrar el óptimo, se resuelve el sistema:
 
 $$
-\nabla_x L = 0 \\\\
-g_i(x) = 0, \quad \forall i
+\begin{aligned}
+\nabla_x L &= 0 \\
+g_i(x) &= 0, \quad \forall i
+\end{aligned}
 $$
 
 ## Ejemplo
@@ -45,9 +47,9 @@ sujeto a:
 **Proceso**:
 1. Formar el Lagrangiano: $L(x, y, \lambda) = x^2 + y^2 + \lambda(x + y - 5)$
 2. Calcular derivadas parciales:
-   - $\frac\{\partial L\}\{\partial x\} = 2x + \lambda = 0$
-   - $\frac\{\partial L\}\{\partial y\} = 2y + \lambda = 0$
-   - $\frac\{\partial L\}\{\partial \lambda\} = x + y - 5 = 0$
+   - $\frac{\partial L}{\partial x} = 2x + \lambda = 0$
+   - $\frac{\partial L}{\partial y} = 2y + \lambda = 0$
+   - $\frac{\partial L}{\partial \lambda} = x + y - 5 = 0$
 3. Resolver el sistema de ecuaciones
 4. Verificar con el Hessiano restringido
 
@@ -68,6 +70,3 @@ El valor de $\lambda_i$ indica:
 - **equalities**: Lista de restricciones de igualdad (automático)
 - **variables**: Variables del problema (automático)
 
-## Notas
-
-El sistema actualmente proporciona una guía del procedimiento. La implementación completa está en desarrollo.

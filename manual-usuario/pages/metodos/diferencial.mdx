@@ -16,22 +16,22 @@ El análisis diferencial estudia:
 El vector de primeras derivadas parciales:
 
 $$
-\nabla f(x) = \begin\{bmatrix\}
-\frac\{\partial f\}\{\partial x_1\} \\\\
-\vdots \\\\
-\frac\{\partial f\}\{\partial x_n\}
-\end\{bmatrix\}
+\nabla f(x) = \begin{bmatrix}
+\frac{\partial f}{\partial x_1} \\
+\vdots \\
+\frac{\partial f}{\partial x_n}
+\end{bmatrix}
 $$
 
 ### Hessiana
 La matriz de segundas derivadas parciales:
 
 $$
-H(x) = \begin\{bmatrix\}
-\frac\{\partial^2 f\}\{\partial x_1^2\} & \cdots & \frac\{\partial^2 f\}\{\partial x_1 \partial x_n\} \\\\
-\vdots & \ddots & \vdots \\\\
-\frac\{\partial^2 f\}\{\partial x_n \partial x_1\} & \cdots & \frac\{\partial^2 f\}\{\partial x_n^2\}
-\end\{bmatrix\}
+H(x) = \begin{bmatrix}
+\frac{\partial^2 f}{\partial x_1^2} & \cdots & \frac{\partial^2 f}{\partial x_1 \partial x_n} \\
+\vdots & \ddots & \vdots \\
+\frac{\partial^2 f}{\partial x_n \partial x_1} & \cdots & \frac{\partial^2 f}{\partial x_n^2}
+\end{bmatrix}
 $$
 
 ## Puntos críticos
@@ -66,14 +66,14 @@ Calcular derivadas de f(x,y) = x^2 - y^2
 
 **Gradiente**:
 $$
-\nabla f = \begin\{bmatrix\} 2x \\\\ -2y \end\{bmatrix\}
+\nabla f = \begin{bmatrix} 2x \\ -2y \end{bmatrix}
 $$
 
 **Punto crítico**: $\nabla f = 0 \Rightarrow x = 0, y = 0$
 
 **Hessiana**:
 $$
-H = \begin\{bmatrix\} 2 & 0 \\\\ 0 & -2 \end\{bmatrix\}
+H = \begin{bmatrix} 2 & 0 \\ 0 & -2 \end{bmatrix}
 $$
 
 **Clasificación**: Punto silla (valores propios: +2 y -2)

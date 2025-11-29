@@ -1,0 +1,107 @@
+# Arquitectura del Sistema
+
+## Visión general
+
+![Diagrama de Arquitectura](/images/diagramas/arquitectura.png)
+
+OptiLearn Web utiliza una arquitectura cliente-servidor con los siguientes componentes:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Frontend Web                          │
+│  (HTML + CSS + JavaScript - fetch para comunicación)        │
+└────────────────────────┬────────────────────────────────────┘
+                         │ API REST / WebSocket
+┌────────────────────────▼────────────────────────────────────┐
+│                    Controladores REST                        │
+│              (Django Views / WebSocket Consumers)            │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│                   Lógica de Negocio (Python)                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │message_parser│→ │method_detector│→ │   analyzer   │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│                           ↓                                  │
+│  ┌─────────────────────────────────────────────────┐        │
+│  │              Solvers (Métodos)                   │        │
+│  │  • solver_gradiente  • solver_lagrange          │        │
+│  │  • solver_kkt        • solver_qp_completo       │        │
+│  └─────────────────────────────────────────────────┘        │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│                     Servicio de IA                           │
+│                    (LLaMA vía Groq API)                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Módulos principales
+
+### message_parser
+- **Función**: Transforma texto del problema en estructura de datos
+- **Entrada**: Texto en lenguaje natural
+- **Salida**: JSON con función objetivo, variables, restricciones
+
+### method_detector
+- **Función**: Selecciona el método de optimización adecuado
+- **Reglas**: Aplica 5 reglas en orden de prioridad
+- **Salida**: Método seleccionado con explicación
+
+### analyzer
+- **Función**: Normaliza y valida expresiones matemáticas
+- **Tecnología**: SymPy para análisis simbólico
+- **Salida**: Metadatos del problema (tipo de función, restricciones)
+
+### Solvers
+Cada solver implementa un método específico:
+- `solver_gradiente`: Descenso del gradiente con búsqueda de línea
+- `solver_lagrange`: Multiplicadores de Lagrange
+- `solver_kkt`: Condiciones de Karush-Kuhn-Tucker
+- `solver_qp_completo`: Programación Cuadrática (método de dos fases)
+
+### consumers_ai
+- **Función**: Gestiona comunicación con servicios de IA
+- **Tareas**: 
+  - Extracción de datos estructurados
+  - Generación de explicaciones pedagógicas
+  - Validación y recomendaciones
+
+## Flujo de datos
+
+![Diagrama de Flujo de Datos](/images/diagramas/flujo-datos.png)
+
+1. **Usuario** envía problema → **Frontend**
+2. **Frontend** envía petición → **Controladores REST**
+3. **Controladores** invocan → **message_parser**
+4. **message_parser** → **analyzer** (validación)
+5. **message_parser** → **method_detector** (selección de método)
+6. **Controladores** invocan → **Solver** correspondiente
+7. **Solver** resuelve y retorna solución → **Controladores**
+8. **Controladores** invocan → **consumers_ai** (explicación IA)
+9. **Servicio IA** genera explicación → **consumers_ai**
+10. **Controladores** retornan respuesta completa → **Frontend**
+11. **Frontend** muestra resultados → **Usuario**
+
+## Tecnologías utilizadas
+
+### Backend
+- **Django**: Framework web
+- **Daphne**: Servidor ASGI para WebSockets
+- **SymPy**: Álgebra simbólica
+- **NumPy/SciPy**: Cálculos numéricos
+
+### Frontend
+- **HTML/CSS**: Estructura y estilos
+- **JavaScript (Vanilla)**: Lógica del cliente
+- **Fetch API**: Comunicación asíncrona
+
+### Servicios externos
+- **Groq API**: Acceso a LLaMA (Meta AI)
+
+## Base de datos
+
+- **SQLite**: Almacenamiento de sesiones de chat y mensajes
+- **Modelos**:
+  - `ChatSession`: Sesiones de usuario
+  - `ChatMessage`: Mensajes del chat

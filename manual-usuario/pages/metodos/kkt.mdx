@@ -1,0 +1,81 @@
+# Condiciones KKT (Karush-Kuhn-Tucker)
+
+## ¿Cuándo se usa?
+
+Las condiciones KKT se usan cuando:
+- El problema tiene **restricciones de desigualdad**
+- Puede tener restricciones de igualdad también
+- Las restricciones pueden ser **no lineales**
+- Se busca caracterizar el óptimo de forma analítica
+
+## Fundamento matemático
+
+Para un problema de optimización con restricciones:
+
+$$
+\min f(x) \\\\
+\text\{s.a.\} \quad g_i(x) = 0, \quad i = 1, \ldots, m \\\\
+h_j(x) \leq 0, \quad j = 1, \ldots, p
+$$
+
+El Lagrangiano generalizado es:
+
+$$
+L(x, \lambda, \mu) = f(x) + \sum_i \lambda_i g_i(x) + \sum_j \mu_j h_j(x)
+$$
+
+## Condiciones KKT
+
+Un punto $x^*$ es óptimo si satisface:
+
+1. **Estacionariedad**: $\nabla_x L(x^*, \lambda^*, \mu^*) = 0$
+2. **Factibilidad primal**: 
+   - $g_i(x^*) = 0, \quad \forall i$
+   - $h_j(x^*) \leq 0, \quad \forall j$
+3. **Factibilidad dual**: $\mu_j^* \geq 0, \quad \forall j$
+4. **Holgura complementaria**: $\mu_j^* h_j(x^*) = 0, \quad \forall j$
+
+## Ejemplo
+
+![Ejemplo de Condiciones KKT](/images/screenshots/ejemplo-kkt.png)
+
+**Problema**: Minimizar $f(x, y) = x^2 + y^2$ sujeto a $x^2 + y \leq 10$ y $x \geq 0$
+
+**Entrada**:
+```
+Minimizar f(x,y) = x^2 + y^2
+sujeto a:
+  x^2 + y <= 10
+  x >= 0
+```
+
+**Proceso**:
+1. Identificar restricciones no lineales ($x^2 + y \leq 10$)
+2. Formar el Lagrangiano con multiplicadores $\mu_1, \mu_2$
+3. Aplicar las 4 condiciones KKT
+4. Resolver el sistema resultante
+5. Verificar qué restricciones están activas (holgura = 0)
+
+**Interpretación**:
+- Si $\mu_j > 0$: La restricción $j$ está activa (se cumple con igualdad)
+- Si $\mu_j = 0$: La restricción $j$ está inactiva (tiene holgura)
+
+## Restricciones no lineales
+
+KKT es especialmente útil cuando hay restricciones como:
+- $x^2 + y^2 \leq r^2$ (círculo)
+- $x \cdot y \geq c$ (hipérbola)
+- $\exp(x) + y \leq b$ (exponencial)
+- Cualquier función no lineal
+
+## Ventajas
+
+- Caracterización exacta del óptimo
+- Identifica restricciones activas
+- Generaliza Lagrange para desigualdades
+- Base teórica para algoritmos numéricos
+
+## Parámetros importantes
+
+- **constraints**: Lista de restricciones (automático)
+- **is_maximization**: Si es maximización en lugar de minimización

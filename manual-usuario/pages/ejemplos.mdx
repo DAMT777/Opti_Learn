@@ -1,0 +1,161 @@
+# Ejemplos Prácticos
+
+Esta sección contiene ejemplos completos resueltos paso a paso con OptiLearn Web.
+
+## Ejemplo 1: Optimización sin restricciones
+
+### Problema
+Minimizar la función $f(x, y) = x^2 + y^2 + 2xy$ desde el punto inicial $[1, 1]$
+
+### Entrada al sistema
+```
+Minimizar f(x,y) = x^2 + y^2 + 2*x*y
+Punto inicial: [1, 1]
+Tolerancia: 1e-6
+```
+
+### Método detectado
+**Gradiente Descendente** - El sistema detecta que no hay restricciones y se menciona un proceso iterativo.
+
+![Resultado del ejemplo 1](/images/screenshots/ejemplo-gradiente.png)
+
+### Solución
+- Punto óptimo: $x^* = [0, 0]$
+- Valor mínimo: $f^* = 0$
+- Iteraciones: 15
+
+### Explicación de la IA
+El sistema genera automáticamente una explicación pedagógica del proceso de solución, mostrando cómo el gradiente descendente converge al óptimo.
+
+![Explicación de IA](/images/resultados/explicacion-ia.png)
+
+---
+
+## Ejemplo 2: Optimización con restricciones de igualdad
+
+### Problema
+Minimizar $f(x, y) = x^2 + y^2$ sujeto a $x + y = 5$
+
+### Entrada al sistema
+```
+Minimizar f(x,y) = x^2 + y^2
+sujeto a:
+  x + y = 5
+```
+
+### Método detectado
+**Multiplicadores de Lagrange** - El sistema detecta solo restricciones de igualdad.
+
+![Resultado del ejemplo 2](/images/screenshots/ejemplo-lagrange.png)
+
+### Procedimiento
+1. Formar el Lagrangiano: $L(x, y, \lambda) = x^2 + y^2 + \lambda(x + y - 5)$
+2. Resolver el sistema de ecuaciones derivadas
+3. Encontrar el punto óptimo y el multiplicador
+
+### Solución
+- Punto óptimo: $x^* = [2.5, 2.5]$
+- Valor mínimo: $f^* = 12.5$
+- Multiplicador: $\lambda^* = -5$
+
+---
+
+## Ejemplo 3: Optimización con restricciones no lineales
+
+### Problema
+Minimizar $f(x, y) = x^2 + y^2$ sujeto a:
+- $x^2 + y \leq 10$
+- $x \geq 0$
+
+### Entrada al sistema
+```
+Minimizar f(x,y) = x^2 + y^2
+sujeto a:
+  x^2 + y <= 10
+  x >= 0
+```
+
+### Método detectado
+**Condiciones KKT** - El sistema detecta restricciones no lineales ($x^2 + y$).
+
+![Resultado del ejemplo 3](/images/screenshots/ejemplo-kkt.png)
+
+### Análisis KKT
+El sistema identifica:
+- Restricciones activas e inactivas
+- Valores de los multiplicadores
+- Verificación de las 4 condiciones KKT
+
+---
+
+## Ejemplo 4: Programación Cuadrática
+
+### Problema
+Minimizar $f(x_1, x_2, x_3) = x_1^2 + x_2^2 + x_3^2$ sujeto a:
+- $x_1 + x_2 + x_3 = 100$ (igualdad)
+- $x_1 \geq 20, x_2 \geq 10, x_3 \geq 10$ (desigualdades)
+
+### Entrada al sistema
+```
+Minimizar f(x1,x2,x3) = x1^2 + x2^2 + x3^2
+sujeto a:
+  x1 + x2 + x3 = 100
+  x1 >= 20
+  x2 >= 10
+  x3 >= 10
+```
+
+### Método detectado
+**Programación Cuadrática (QP)** - Función cuadrática con restricciones lineales y mezcla de igualdades/desigualdades.
+
+![Resultado del ejemplo 4](/images/screenshots/ejemplo-qp.png)
+
+### Proceso de solución
+1. **Fase I**: Encontrar punto factible inicial
+2. **Fase II**: Optimizar función objetivo
+3. Análisis de convexidad de la matriz Hessiana
+
+### Solución
+- Punto óptimo: $x^* = [33.33, 33.33, 33.34]$
+- Valor óptimo: $f^* \approx 3333.33$
+
+---
+
+## Ejemplo 5: Análisis diferencial
+
+### Problema
+Analizar la función $f(x, y) = x^2 - y^2$ para encontrar puntos críticos
+
+### Entrada al sistema
+```
+Calcular derivadas de f(x,y) = x^2 - y^2
+Encontrar puntos críticos
+```
+
+### Método detectado
+**Cálculo Diferencial** - Se solicitan derivadas sin mencionar optimización iterativa.
+
+![Resultado del ejemplo 5](/images/screenshots/ejemplo-diferencial.png)
+
+### Análisis
+- **Gradiente**: $\nabla f = [2x, -2y]$
+- **Punto crítico**: $(0, 0)$
+- **Hessiana**: $H = \begin\{bmatrix\} 2 & 0 \\\\ 0 & -2 \end\{bmatrix\}$
+- **Clasificación**: Punto silla (valores propios: +2 y -2)
+
+---
+
+## Consejos para mejores resultados
+
+1. **Especifica el punto inicial** cuando uses métodos iterativos
+2. **Describe las restricciones claramente** usando símbolos matemáticos estándar
+3. **Usa la notación correcta** para potencias (`^` o `**`) y productos (`*`)
+4. **Revisa la selección automática del método** - el sistema te explica por qué eligió ese método
+5. **Consulta la explicación de la IA** para entender mejor el proceso
+
+## Más ejemplos
+
+Puedes encontrar más ejemplos en:
+- La sección de [FAQ](/faq) con casos comunes
+- Los archivos de prueba del proyecto Python
+- La documentación técnica del sistema

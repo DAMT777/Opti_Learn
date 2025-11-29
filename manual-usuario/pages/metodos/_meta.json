@@ -1,0 +1,7 @@
+{
+  "gradiente": "Gradiente Descendente",
+  "lagrange": "Multiplicadores de Lagrange",
+  "kkt": "Condiciones KKT",
+  "qp": "Programación Cuadrática",
+  "diferencial": "Cálculo Diferencial"
+}

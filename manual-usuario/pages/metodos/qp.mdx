@@ -1,0 +1,101 @@
+# Programación Cuadrática (QP)
+
+## ¿Cuándo se usa?
+
+La Programación Cuadrática se usa cuando:
+- La función objetivo es **cuadrática**: $f(x) = \frac\{1\}\{2\} x^T H x + c^T x$
+- Las restricciones son **lineales**
+- Hay una **mezcla de restricciones**: al menos una igualdad Y al menos una desigualdad
+
+## Fundamento matemático
+
+Un problema QP tiene la forma:
+
+$$
+\min \quad \frac\{1\}\{2\} x^T H x + c^T x \\\\
+\text\{s.a.\} \quad Ax = b \\\\
+Gx \leq h
+$$
+
+Donde:
+- $H$ es una matriz simétrica (Hessiana)
+- $c$ es el vector de términos lineales
+- $A, b$ definen restricciones de igualdad
+- $G, h$ definen restricciones de desigualdad
+
+## Método de solución
+
+El sistema usa el **método de dos fases**:
+
+### Fase I: Factibilidad
+1. Introducir variables artificiales
+2. Minimizar la suma de variables artificiales
+3. Encontrar un punto inicial factible
+
+### Fase II: Optimización
+1. Partir del punto factible de Fase I
+2. Optimizar la función objetivo original
+3. Aplicar el método Simplex adaptado para QP
+
+## Convexidad
+
+Si $H$ es **semidefinida positiva**, el problema es convexo:
+- El óptimo local es global
+- La solución es única (si existe)
+- Método de dos fases garantiza encontrarlo
+
+## Ejemplo
+
+![Ejemplo de Programación Cuadrática](/images/screenshots/ejemplo-qp.png)
+
+**Problema**: Minimizar $f(x_1, x_2) = x_1^2 + x_2^2$ sujeto a:
+- $x_1 + x_2 = 1$ (igualdad)
+- $x_1 \geq 0, x_2 \geq 0$ (desigualdades)
+
+**Entrada**:
+```
+Minimizar f(x1,x2) = x1^2 + x2^2
+sujeto a:
+  x1 + x2 = 1
+  x1 >= 0
+  x2 >= 0
+```
+
+**Matrices del problema**:
+- $H = \begin\{bmatrix\} 2 & 0 \\\\ 0 & 2 \end\{bmatrix\}$
+- $c = \begin\{bmatrix\} 0 \\\\ 0 \end\{bmatrix\}$
+- $A = [1 \quad 1]$, $b = [1]$
+- $G = \begin\{bmatrix\} -1 & 0 \\\\ 0 & -1 \end\{bmatrix\}$, $h = \begin\{bmatrix\} 0 \\\\ 0 \end\{bmatrix\}$
+
+**Resultado**:
+- Punto óptimo: $x^* = [0.5, 0.5]$
+- Valor mínimo: $f^* = 0.5$
+
+## Análisis de convexidad
+
+El sistema automáticamente:
+1. Calcula los valores propios de $H$
+2. Verifica si todos son $\geq 0$ (semidefinida positiva)
+3. Reporta si el problema es convexo
+4. Indica las implicaciones para la optimalidad
+
+## Diferencia con otros métodos
+
+- **vs Lagrange**: QP permite desigualdades, Lagrange solo igualdades
+- **vs KKT**: QP requiere función cuadrática, KKT acepta cualquier función no lineal
+- **vs Gradiente**: QP usa método directo, Gradiente es iterativo
+
+## Aplicaciones comunes
+
+- Optimización de portafolios financieros
+- Ajuste de curvas con restricciones
+- Control óptimo con límites
+- Problemas de asignación con costos cuadráticos
+
+## Salida del sistema
+
+El sistema proporciona:
+- Verificación de convexidad
+- Solución de ambas fases
+- Valores de variables de holgura
+- Explicación pedagógica completa del proceso

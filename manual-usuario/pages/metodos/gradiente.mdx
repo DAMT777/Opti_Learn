@@ -1,0 +1,62 @@
+# Gradiente Descendente
+
+## ¿Cuándo se usa?
+
+El método del gradiente descendente se usa cuando:
+- El problema menciona un **proceso iterativo**
+- No hay restricciones complejas
+- Se busca minimizar una función diferenciable
+
+## Fundamento matemático
+
+El gradiente descendente actualiza la solución iterativamente:
+
+$$
+x_\{k+1\} = x_k - \alpha_k \nabla f(x_k)
+$$
+
+Donde:
+- $x_k$ es la solución en la iteración k
+- $\alpha_k$ es el tamaño de paso (learning rate)
+- $\nabla f(x_k)$ es el gradiente de la función en $x_k$
+
+## Ejemplo
+
+![Ejemplo de Gradiente Descendente](/images/screenshots/ejemplo-gradiente.png)
+
+**Problema**: Minimizar $f(x, y) = x^2 + y^2$ desde el punto inicial $[1, 1]$
+
+**Entrada**:
+```
+Minimizar f(x,y) = x^2 + y^2
+Punto inicial: [1, 1]
+Usar gradiente descendente con 100 iteraciones
+```
+
+**Proceso**:
+1. El sistema calcula el gradiente: $\nabla f = [2x, 2y]$
+2. En cada iteración, actualiza: $x_\{k+1\} = x_k - \alpha_k [2x_k, 2y_k]$
+3. El tamaño de paso $\alpha_k$ se determina mediante búsqueda de línea (Armijo)
+4. Converge cuando $\|\nabla f(x_k)\| < \text\{tolerancia\}$
+
+**Resultado**:
+- Punto óptimo: $x^* = [0, 0]$
+- Valor mínimo: $f^* = 0$
+- Iteraciones: ~20 (dependiendo de la tolerancia)
+
+## Parámetros importantes
+
+- **x0**: Punto inicial (obligatorio)
+- **tol**: Tolerancia de convergencia (por defecto: 1e-6)
+- **max_iter**: Número máximo de iteraciones (por defecto: 200)
+
+## Interpretación de resultados
+
+![Tabla de iteraciones](/images/resultados/tabla-iteraciones.png)
+
+El sistema muestra:
+- Tabla de iteraciones con valores de $x_k$, $f(x_k)$, $\|\nabla f\|$ y $\alpha_k$
+- Gráfica de la trayectoria de optimización
+- Explicación pedagógica del proceso
+
+![Gráfica de convergencia](/images/resultados/grafica-convergencia.png)

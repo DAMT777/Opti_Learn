@@ -1,0 +1,99 @@
+# Preguntas Frecuentes (FAQ)
+
+## Uso general
+
+### ¿Qué tipos de problemas puedo resolver?
+
+OptiLearn Web puede resolver problemas de:
+- Optimización sin restricciones
+- Optimización con restricciones lineales
+- Optimización con restricciones no lineales
+- Problemas cuadráticos
+- Análisis diferencial de funciones
+
+### ¿Necesito saber programar?
+
+No, puedes describir los problemas en lenguaje natural. El sistema interpreta automáticamente tu descripción.
+
+### ¿Cómo sé qué método se usará?
+
+El sistema te muestra automáticamente qué método seleccionó y por qué. También puedes ver las reglas de selección en la sección de [Métodos de Optimización](/metodos).
+
+## Formato de entrada
+
+### ¿Cómo escribo funciones matemáticas?
+
+Usa notación estándar:
+- Potencias: `x^2` o `x**2`
+- Productos: `2*x*y`
+- Funciones: `sin(x)`, `cos(x)`, `exp(x)`, `log(x)`
+
+### ¿Cómo especifico restricciones?
+
+Usa símbolos matemáticos estándar:
+```
+x + y <= 10    (desigualdad menor o igual)
+x >= 0         (desigualdad mayor o igual)
+x + y = 5      (igualdad)
+```
+
+### ¿Es obligatorio el punto inicial?
+
+Depende del método:
+- **Gradiente Descendente**: Sí, obligatorio
+- **KKT/Lagrange**: Opcional (útil para métodos numéricos)
+- **QP**: Opcional, se asume [0, 0, ...] si no se proporciona
+
+## Resultados
+
+### ¿Qué significa "convergencia"?
+
+Convergencia significa que el algoritmo encontró una solución donde el gradiente es muy pequeño (menor que la tolerancia), indicando un punto estacionario.
+
+### ¿Por qué veo iteraciones limitadas?
+
+Por defecto, el sistema ejecuta máximo 200 iteraciones. Si necesitas más, especifícalo en el problema: "con máximo 500 iteraciones".
+
+### ¿Qué significa "punto estacionario"?
+
+Un punto donde el gradiente es cero o muy pequeño. Puede ser mínimo, máximo o punto silla.
+
+## Errores comunes
+
+### "No se detectaron variables"
+
+Asegúrate de escribir la función objetivo con variables explícitas: `f(x,y) = x^2 + y^2` en lugar de solo `x^2 + y^2`.
+
+### "Dimensión de x0 no coincide"
+
+El punto inicial debe tener tantos componentes como variables. Si tienes variables x, y, usa `x0 = [valor_x, valor_y]`.
+
+### "No se pudo contactar al asistente IA"
+
+Verifica que:
+- Tienes conexión a internet
+- El servidor tiene configurada la API key de Groq
+- El servicio de IA está disponible
+
+## Rendimiento
+
+### ¿Cuánto tarda en resolver un problema?
+
+Depende de la complejidad:
+- Problemas simples: < 1 segundo
+- Problemas con muchas iteraciones: 2-5 segundos
+- Problemas con IA activa: +2-3 segundos adicionales
+
+### ¿Puedo resolver problemas con muchas variables?
+
+Sí, pero ten en cuenta que la visualización puede ser limitada para problemas con más de 3 variables.
+
+## Soporte técnico
+
+### ¿Dónde reporto problemas?
+
+Contacta a los desarrolladores del proyecto en la Universidad de los Llanos o abre un issue en el repositorio de GitHub.
+
+### ¿Cómo contribuir al proyecto?
+
+El proyecto es de código abierto. Consulta el archivo README.md en el repositorio para guías de contribución.
